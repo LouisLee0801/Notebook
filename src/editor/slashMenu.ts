@@ -64,6 +64,35 @@ const COMMANDS: SlashCommand[] = [
     keywords: 'divider hr horizontal rule 分隔',
     run: (editor, range) => editor.chain().focus().deleteRange(range).setHorizontalRule().run(),
   },
+  {
+    title: '表格',
+    keywords: 'table 表格',
+    run: (editor, range) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+        .run(),
+  },
+  {
+    title: '圖片',
+    keywords: 'image picture photo 圖片 相片',
+    run: (editor, range) => {
+      editor.chain().focus().deleteRange(range).run()
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = 'image/*'
+      input.onchange = () => {
+        const file = input.files?.[0]
+        if (!file) return
+        void import('./extensions').then(({ fileToDataUrl }) =>
+          fileToDataUrl(file).then((src) => editor.chain().focus().setImage({ src }).run()),
+        )
+      }
+      input.click()
+    },
+  },
 ]
 
 export const SlashMenu = Extension.create({

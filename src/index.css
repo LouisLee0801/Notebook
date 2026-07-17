@@ -89,6 +89,44 @@
   cursor: pointer;
 }
 
+.tiptap img {
+  max-width: 100%;
+  border-radius: 0.4rem;
+}
+
+.tiptap img.ProseMirror-selectednode {
+  outline: 2px solid #60a5fa;
+}
+
+.tiptap table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+  margin: 0.5rem 0;
+}
+
+.tiptap th,
+.tiptap td {
+  border: 1px solid #e5e7eb;
+  padding: 0.35rem 0.55rem;
+  vertical-align: top;
+  position: relative;
+}
+
+.tiptap th {
+  background: #f9fafb;
+  font-weight: 600;
+  text-align: left;
+}
+
+.tiptap .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgb(96 165 250 / 0.15);
+  pointer-events: none;
+}
+
 /* 待辦清單 */
 .tiptap ul[data-type='taskList'] {
   list-style: none;

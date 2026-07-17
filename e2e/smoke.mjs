@@ -35,6 +35,18 @@ if (!(await page.textContent('.tiptap ul li'))?.includes('清單項目'))
   throw new Error('markdown shortcut failed')
 log('M1: markdown input rules')
 
+// 表格區塊（M5：/表格 插入 3x3 含表頭）
+await page.keyboard.press('Enter')
+await page.keyboard.press('Enter')
+await page.keyboard.type('/表格')
+await page.waitForSelector('.slash-menu-item')
+await page.keyboard.press('Enter')
+await page.waitForSelector('.tiptap table th')
+await page.keyboard.type('表頭一')
+if (!(await page.textContent('.tiptap table th'))?.includes('表頭一'))
+  throw new Error('table block failed')
+log('M5: table block inserted and editable')
+
 await page.waitForTimeout(800)
 await page.reload()
 await page.waitForSelector('text=我的第一張卡片')
