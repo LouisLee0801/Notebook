@@ -51,6 +51,26 @@ export interface CardLink {
   toCardId: string
 }
 
+// 標籤與屬性（M4 先做簡單標籤；properties 供 M5 標籤資料庫使用）
+export interface TagProperty {
+  id: string
+  name: string
+  type: 'text' | 'number' | 'select' | 'multiSelect' | 'date' | 'checkbox'
+  options?: string[]
+}
+
+export interface Tag {
+  id: string
+  name: string
+  properties: TagProperty[]
+}
+
+export interface CardTag {
+  cardId: string
+  tagId: string
+  values: Record<string, unknown>
+}
+
 // 日誌：以日期為 key 的特殊卡片（重用 Card 與連結機制）
 export interface JournalEntry {
   date: string // YYYY-MM-DD

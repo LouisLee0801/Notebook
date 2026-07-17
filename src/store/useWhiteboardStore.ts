@@ -6,6 +6,8 @@ export type View =
   | { type: 'library' }
   | { type: 'board'; boardId: string }
   | { type: 'journal' }
+  | { type: 'tag'; tagId: string }
+  | { type: 'trash' }
 
 interface WhiteboardStore {
   boards: Whiteboard[]
@@ -14,6 +16,8 @@ interface WhiteboardStore {
   openLibrary: () => void
   openBoard: (boardId: string) => void
   openJournal: () => void
+  openTag: (tagId: string) => void
+  openTrash: () => void
   createBoard: () => Promise<void>
   renameBoard: (id: string, name: string) => Promise<void>
   deleteBoard: (id: string) => Promise<void>
@@ -30,6 +34,8 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   openLibrary: () => set({ view: { type: 'library' } }),
   openBoard: (boardId) => set({ view: { type: 'board', boardId } }),
   openJournal: () => set({ view: { type: 'journal' } }),
+  openTag: (tagId) => set({ view: { type: 'tag', tagId } }),
+  openTrash: () => set({ view: { type: 'trash' } }),
 
   createBoard: async () => {
     const board = await whiteboardRepository.create(`白板 ${get().boards.length + 1}`)

@@ -7,7 +7,9 @@ import { useCardStore } from '../store/useCardStore'
 import { baseExtensions } from '../editor/extensions'
 import { SlashMenu } from '../editor/slashMenu'
 import { CardLinkSuggestion } from '../editor/cardLink'
+import { cardToMarkdown, downloadMarkdown } from '../editor/markdown'
 import { BacklinksPanel } from './BacklinksPanel'
+import { TagChips } from './TagChips'
 
 const SAVE_DEBOUNCE_MS = 400
 
@@ -64,14 +66,29 @@ export function CardEditor({
         }
       >
         {!hideTitle && (
-          <input
-            className={`w-full bg-transparent font-bold outline-none placeholder:text-gray-300 ${
-              compact ? 'text-xl' : 'text-3xl'
-            }`}
-            placeholder="未命名卡片"
-            value={card.title}
-            onChange={(e) => void updateCard(card.id, { title: e.target.value })}
-          />
+          <>
+            <div className="flex items-start gap-2">
+              <input
+                className={`w-full min-w-0 flex-1 bg-transparent font-bold outline-none placeholder:text-gray-300 ${
+                  compact ? 'text-xl' : 'text-3xl'
+                }`}
+                placeholder="未命名卡片"
+                value={card.title}
+                onChange={(e) => void updateCard(card.id, { title: e.target.value })}
+              />
+              <button
+                type="button"
+                title="匯出 Markdown"
+                onClick={() =>
+                  downloadMarkdown(`${card.title || '未命名卡片'}.md`, cardToMarkdown(card))
+                }
+                className="mt-1 shrink-0 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-500 hover:bg-gray-50"
+              >
+                ↓ MD
+              </button>
+            </div>
+            <TagChips cardId={card.id} />
+          </>
         )}
         <div className={hideTitle ? 'journal-editor' : 'mt-4'}>
           <EditorContent editor={editor} />

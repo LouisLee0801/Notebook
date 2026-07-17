@@ -111,6 +111,55 @@ await page.click('.journal-editor .card-link')
 await page.waitForSelector('input[placeholder="未命名卡片"]')
 log('M3: clicking a card link navigates to the card')
 
+// ---- M4：標籤、搜尋、垃圾桶 ----
+await page.click('aside >> text=我的第一張卡片')
+await page.waitForSelector('button:has-text("＋ 標籤")')
+await page.click('button:has-text("＋ 標籤")')
+await page.keyboard.type('靈感')
+await page.keyboard.press('Enter')
+await page.waitForSelector('aside >> text=# 靈感')
+log('M4: tag added to card, appears in sidebar')
+
+await page.click('aside >> text=# 靈感')
+await page.waitForSelector('h1:has-text("# 靈感")')
+await page.waitForSelector('text=我的第一張卡片')
+log('M4: tag page lists tagged cards')
+
+// Cmd+K 全文搜尋跳轉
+await page.keyboard.press('Control+k')
+await page.waitForSelector('input[placeholder="搜尋卡片、白板，或執行指令…"]')
+await page.keyboard.type('章節一')
+await page.waitForSelector('li >> text=我的第一張卡片')
+await page.keyboard.press('Enter')
+await page.waitForSelector('input[placeholder="未命名卡片"]')
+const openedTitle = await page.inputValue('input[placeholder="未命名卡片"]')
+if (openedTitle !== '我的第一張卡片') throw new Error('palette jump failed: ' + openedTitle)
+log('M4: Cmd+K full-text search jumps to card')
+
+// 垃圾桶：刪除 → 還原 → 永久刪除
+await page.click('[aria-label="新增卡片"]')
+// 等新卡片（空標題）真的選上，避免把標題填進上一張卡
+await page.waitForFunction(
+  () => document.querySelector('input[placeholder="未命名卡片"]')?.value === '',
+)
+await page.fill('input[placeholder="未命名卡片"]', '要刪的卡片')
+await page.waitForTimeout(500)
+await page.hover('aside li:has-text("要刪的卡片")')
+await page.click('aside li:has-text("要刪的卡片") [aria-label="刪除卡片"]')
+await page.click('text=🗑 垃圾桶')
+await page.waitForSelector('main >> text=要刪的卡片')
+await page.click('button:has-text("還原")')
+await page.waitForSelector('aside >> text=要刪的卡片')
+log('M4: trash restore works')
+
+await page.hover('aside li:has-text("要刪的卡片")')
+await page.click('aside li:has-text("要刪的卡片") [aria-label="刪除卡片"]')
+await page.click('text=🗑 垃圾桶')
+await page.waitForSelector('main >> text=要刪的卡片')
+await page.click('button:has-text("永久刪除")')
+await page.waitForSelector('text=垃圾桶是空的')
+log('M4: permanent delete works')
+
 // ---- 清理 ----
 await page.click('aside >> text=卡片庫')
 while (await page.$('[aria-label="刪除白板"]')) {

@@ -37,4 +37,34 @@ export const cardRepository = {
   async softDelete(id: string, now = Date.now()): Promise<void> {
     await db.cards.update(id, { deletedAt: now, updatedAt: now })
   },
+
+  /** 垃圾桶內容，依刪除時間新→舊 */
+  async listTrashed(): Promise<Card[]> {
+    const cards = await db.cards.filter((c) => c.deletedAt !== null).toArray()
+    return cards.sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0))
+  },
+
+  async restore(id: string, now = Date.now()): Promise<void> {
+    await db.cards.update(id, { deletedAt: null, updatedAt: now })
+  },
+
+  /** 永久刪除：連同白板實例、相關連線、雙向連結與標籤關聯一併清除 */
+  async hardDelete(id: string): Promise<void> {
+    await db.transaction(
+      'rw',
+      [db.cards, db.cardInstances, db.boardEdges, db.cardLinks, db.cardTags],
+      async () => {
+        const instances = await db.cardInstances.where('cardId').equals(id).toArray()
+        for (const instance of instances) {
+          await db.boardEdges.where('fromInstanceId').equals(instance.id).delete()
+          await db.boardEdges.where('toInstanceId').equals(instance.id).delete()
+        }
+        await db.cardInstances.where('cardId').equals(id).delete()
+        await db.cardLinks.where('fromCardId').equals(id).delete()
+        await db.cardLinks.where('toCardId').equals(id).delete()
+        await db.cardTags.where('cardId').equals(id).delete()
+        await db.cards.delete(id)
+      },
+    )
+  },
 }

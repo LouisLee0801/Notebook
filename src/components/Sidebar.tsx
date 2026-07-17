@@ -1,6 +1,7 @@
 import { useCardStore } from '../store/useCardStore'
 import { useWhiteboardStore } from '../store/useWhiteboardStore'
 import { useJournalStore } from '../store/useJournalStore'
+import { useTagStore } from '../store/useTagStore'
 
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleString('zh-TW', {
@@ -26,6 +27,9 @@ export function Sidebar() {
   const openLibrary = useWhiteboardStore((s) => s.openLibrary)
   const openBoard = useWhiteboardStore((s) => s.openBoard)
   const openJournal = useWhiteboardStore((s) => s.openJournal)
+  const openTag = useWhiteboardStore((s) => s.openTag)
+  const openTrash = useWhiteboardStore((s) => s.openTrash)
+  const tags = useTagStore((s) => s.tags)
   const createBoard = useWhiteboardStore((s) => s.createBoard)
   const renameBoard = useWhiteboardStore((s) => s.renameBoard)
   const deleteBoard = useWhiteboardStore((s) => s.deleteBoard)
@@ -93,6 +97,30 @@ export function Sidebar() {
         ))}
       </ul>
 
+      {/* 標籤 */}
+      {tags.length > 0 && (
+        <>
+          <div className="flex items-center justify-between border-t border-gray-200 px-4 pt-3 pb-1">
+            <h2 className="text-xs font-semibold tracking-wide text-gray-500">標籤</h2>
+          </div>
+          <ul className="max-h-32 overflow-y-auto px-2">
+            {tags.map((tag) => (
+              <li key={tag.id}>
+                <button
+                  type="button"
+                  onClick={() => openTag(tag.id)}
+                  className={`block w-full truncate rounded-md px-3 py-1 text-left text-sm text-gray-700 hover:bg-gray-200 ${
+                    view.type === 'tag' && view.tagId === tag.id ? 'bg-gray-200 font-medium' : ''
+                  }`}
+                >
+                  # {tag.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
       {/* 卡片庫 */}
       <div className="mt-2 flex items-center justify-between border-t border-gray-200 px-4 pt-3 pb-1">
         <button
@@ -157,6 +185,18 @@ export function Sidebar() {
           </li>
         ))}
       </ul>
+      <div className="flex items-center justify-between border-t border-gray-200 px-2 py-1.5">
+        <button
+          type="button"
+          onClick={openTrash}
+          className={`rounded-md px-2 py-1 text-xs hover:bg-gray-200 ${
+            view.type === 'trash' ? 'bg-gray-200 text-gray-800' : 'text-gray-500'
+          }`}
+        >
+          🗑 垃圾桶
+        </button>
+        <span className="px-2 text-[11px] text-gray-400">Ctrl/⌘+K 搜尋</span>
+      </div>
       <p className="border-t border-gray-200 px-4 py-2 text-[11px] leading-relaxed text-gray-400">
         拖曳卡片到白板即可上板；白板上雙擊空白處新增卡片
       </p>
