@@ -81,6 +81,20 @@ function renderBlock(node: ContentNode): string {
     }
     case 'horizontalRule':
       return '---'
+    case 'image':
+      return `![圖片](${String(node.attrs?.src ?? '')})`
+    case 'table': {
+      const rows = node.content ?? []
+      const lines: string[] = []
+      rows.forEach((row, rowIndex) => {
+        const cells = (row.content ?? []).map((cell) =>
+          renderBlocks(cell.content).replace(/\n+/g, ' ').trim(),
+        )
+        lines.push(`| ${cells.join(' | ')} |`)
+        if (rowIndex === 0) lines.push(`| ${cells.map(() => '---').join(' | ')} |`)
+      })
+      return lines.join('\n')
+    }
     default:
       return node.content ? renderBlocks(node.content) : ''
   }

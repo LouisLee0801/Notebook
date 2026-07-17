@@ -12,8 +12,12 @@ const log = (m) => console.log('✓', m)
 page.on('dialog', (d) => d.accept())
 
 await page.goto(BASE_URL)
+// M0：已設定 Supabase → 首次載入出現登入頁；測試走離線路徑
+await page.waitForSelector('text=先離線使用')
+await page.click('text=先離線使用')
 await page.waitForSelector('text=卡片庫')
-log('app loaded')
+await page.waitForSelector('text=尚未同步（離線模式）')
+log('app loaded (login gate -> offline mode)')
 
 // ---- M1：卡片 + 編輯器 ----
 await page.click('[aria-label="新增卡片"]')
@@ -35,6 +39,18 @@ if (!(await page.textContent('.tiptap ul li'))?.includes('清單項目'))
   throw new Error('markdown shortcut failed')
 log('M1: markdown input rules')
 
+// 表格區塊（M5：/表格 插入 3x3 含表頭）
+await page.keyboard.press('Enter')
+await page.keyboard.press('Enter')
+await page.keyboard.type('/表格')
+await page.waitForSelector('.slash-menu-item')
+await page.keyboard.press('Enter')
+await page.waitForSelector('.tiptap table th')
+await page.keyboard.type('表頭一')
+if (!(await page.textContent('.tiptap table th'))?.includes('表頭一'))
+  throw new Error('table block failed')
+log('M5: table block inserted and editable')
+
 await page.waitForTimeout(800)
 await page.reload()
 await page.waitForSelector('text=我的第一張卡片')
@@ -47,7 +63,8 @@ log('M1: reload persistence')
 // ---- M2：白板 ----
 await page.click('[aria-label="新增白板"]')
 await page.waitForSelector('.react-flow__pane')
-log('M2: whiteboard created and opened')
+await page.waitForSelector('.react-flow__minimap')
+log('M2: whiteboard created and opened (with minimap)')
 
 // 雙擊空白處新增卡片（會開啟右側編輯抽屜）
 await page.dblclick('.react-flow__pane', { position: { x: 500, y: 300 } })
@@ -86,6 +103,43 @@ await page.click('aside >> text=白板 1')
 await page.waitForSelector('.card-node-title:has-text("同步後的標題")')
 log('M2: board persists after reload')
 
+// ---- M5：白板深化（便利貼、區域、卡片顏色）----
+await page.click('button:has-text("＋ 便利貼")')
+await page.waitForSelector('.sticky-node')
+// 先把便利貼拖離中心，避免蓋住卡片節點
+{
+  const box = await page.locator('.sticky-node').boundingBox()
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x - 260, box.y + 200, { steps: 8 })
+  await page.mouse.up()
+}
+await page.click('.sticky-node') // 選取後才進入編輯
+await page.fill('textarea.sticky-node-input', '記得補充參考資料')
+await page.locator('textarea.sticky-node-input').blur()
+await page.waitForTimeout(300)
+log('M5: sticky note added, dragged and edited')
+
+await page.click('button:has-text("＋ 區域")')
+await page.waitForSelector('.section-node')
+log('M5: section added')
+
+await page.click('.card-node')
+await page.waitForSelector('.card-color-toolbar')
+await page.click('[aria-label="卡片顏色 黃"]')
+await page.waitForTimeout(300)
+const cardBg = await page.$eval('.card-node', (el) => getComputedStyle(el).backgroundColor)
+if (!cardBg.includes('255, 251, 235')) throw new Error('card color failed: ' + cardBg)
+log('M5: card color applied from toolbar')
+
+await page.reload()
+await page.click('aside >> text=白板 1')
+await page.waitForSelector('.sticky-node:has-text("記得補充參考資料")')
+await page.waitForSelector('.section-node')
+const persistedBg = await page.$eval('.card-node', (el) => getComputedStyle(el).backgroundColor)
+if (!persistedBg.includes('255, 251, 235')) throw new Error('color persistence failed')
+log('M5: sticky/section/color persist after reload')
+
 // ---- M3：日誌 + 雙向連結 ----
 await page.click('aside >> text=日誌')
 await page.waitForSelector('text=今天')
@@ -97,6 +151,12 @@ await page.waitForSelector('.slash-menu-item')
 await page.keyboard.press('Enter')
 await page.waitForSelector('.journal-editor .card-link:has-text("我的第一張卡片")')
 log('M3: [[ suggestion inserts card link in journal')
+
+// hover 連結 chip 顯示卡片內容預覽
+await page.hover('.journal-editor .card-link')
+await page.waitForSelector('.link-preview')
+await page.mouse.move(10, 10)
+log('M5: link hover preview appears')
 
 await page.waitForTimeout(800)
 await page.click('aside >> text=我的第一張卡片')
@@ -111,6 +171,23 @@ await page.click('.journal-editor .card-link')
 await page.waitForSelector('input[placeholder="未命名卡片"]')
 log('M3: clicking a card link navigates to the card')
 
+// ---- M5：未連結提及 ----
+await page.click('[aria-label="新增卡片"]')
+await page.waitForFunction(
+  () => document.querySelector('input[placeholder="未命名卡片"]')?.value === '',
+)
+await page.fill('input[placeholder="未命名卡片"]', '隨手記')
+await page.click('.tiptap')
+await page.keyboard.type('這段提到了我的第一張卡片但沒有加連結。')
+await page.waitForTimeout(800)
+
+await page.click('aside >> text=我的第一張卡片')
+await page.waitForSelector('text=未連結提及')
+await page.click('button:has-text("轉為連結")')
+await page.waitForSelector('text=未連結提及', { state: 'detached' })
+await page.waitForSelector('main >> text=隨手記')
+log('M5: unlinked mention detected and converted to a backlink')
+
 // ---- M4：標籤、搜尋、垃圾桶 ----
 await page.click('aside >> text=我的第一張卡片')
 await page.waitForSelector('button:has-text("＋ 標籤")')
@@ -124,6 +201,24 @@ await page.click('aside >> text=# 靈感')
 await page.waitForSelector('h1:has-text("# 靈感")')
 await page.waitForSelector('text=我的第一張卡片')
 log('M4: tag page lists tagged cards')
+
+// ---- M5：標籤資料庫（屬性、表格、看板）----
+await page.click('button:has-text("＋ 屬性")')
+await page.fill('input[placeholder="屬性名稱"]', '狀態')
+await page.selectOption('select[aria-label="屬性型別"]', 'select')
+await page.fill('input[placeholder="選項（逗號分隔）"]', '待讀,閱讀中,完成')
+await page.click('button:has-text("新增"):right-of(input[placeholder="屬性名稱"])')
+await page.waitForSelector('th >> text=狀態')
+log('M5: custom select property added')
+
+await page.selectOption('td select[aria-label="狀態"]', '閱讀中')
+await page.waitForTimeout(400)
+await page.click('button:has-text("看板")')
+await page.waitForSelector('[data-kanban-column="閱讀中"] >> text=我的第一張卡片')
+log('M5: kanban groups card under its select value')
+
+await page.click('button:has-text("表格")')
+await page.waitForSelector('th >> text=狀態')
 
 // Cmd+K 全文搜尋跳轉
 await page.keyboard.press('Control+k')

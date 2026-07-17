@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { CardTag, Tag } from '../types'
+import type { CardTag, Tag, TagProperty } from '../types'
 import { tagRepository } from '../db/tagRepository'
 
 interface TagStore {
@@ -10,6 +10,9 @@ interface TagStore {
   removeTagFromCard: (cardId: string, tagId: string) => Promise<void>
   renameTag: (id: string, name: string) => Promise<void>
   deleteTag: (id: string) => Promise<void>
+  addProperty: (tagId: string, property: TagProperty) => Promise<void>
+  removeProperty: (tagId: string, propertyId: string) => Promise<void>
+  setValue: (cardId: string, tagId: string, propertyId: string, value: unknown) => Promise<void>
 }
 
 export const useTagStore = create<TagStore>((set, get) => ({
@@ -47,6 +50,29 @@ export const useTagStore = create<TagStore>((set, get) => ({
     set({
       tags: get().tags.filter((t) => t.id !== id),
       cardTags: get().cardTags.filter((ct) => ct.tagId !== id),
+    })
+  },
+
+  addProperty: async (tagId, property) => {
+    await tagRepository.addProperty(tagId, property)
+    await get().load()
+  },
+
+  removeProperty: async (tagId, propertyId) => {
+    await tagRepository.removeProperty(tagId, propertyId)
+    await get().load()
+  },
+
+  setValue: async (cardId, tagId, propertyId, value) => {
+    await tagRepository.setValue(cardId, tagId, propertyId, value)
+    set({
+      cardTags: get().cardTags.map((ct) => {
+        if (ct.cardId !== cardId || ct.tagId !== tagId) return ct
+        const values = { ...ct.values }
+        if (value === null || value === undefined || value === '') delete values[propertyId]
+        else values[propertyId] = value
+        return { ...ct, values }
+      }),
     })
   },
 }))

@@ -39,4 +39,17 @@ npm run e2e      # 核心流程冒煙測試（需先啟動 dev server）
 - [x] **M2** 白板：React Flow 無限畫布（平移縮放）、雙擊/拖曳上板、一卡多板內容同步、移動與縮放卡片、多選框選、箭頭連線＋雙擊編輯線上標籤、白板 CRUD 與側邊欄導航
 - [x] **M3** 雙向連結 + 日誌：`[[` 搜尋插入卡片連結（查無卡片可直接建立）、存檔重建 CardLink、反向連結面板（含上下文預覽）、日誌每日一頁／時間軸／今日直達、連結 chip 點擊導航
 - [x] **M4** 搜尋 + 收尾（MVP 完成 🎉）：全文搜尋 + Ctrl/⌘+K 快速開啟（卡片／白板／指令）、標籤 CRUD 與標籤頁、Markdown 匯出（單卡與整庫）、垃圾桶（還原／永久刪除）
-- [ ] M0/同步：Supabase（帳號 + 雲端同步）
+- [x] **M5（第一部分）** 標籤資料庫：自訂屬性（文字／數字／單選／多選／日期／勾選）、表格檢視（欄位排序、儲存格直接編輯）、看板檢視（依單選屬性分欄、拖曳改值）
+- [x] **M5（第二部分）** 白板深化：Section 具名區域（可縮放，拖曳時帶動區域內卡片與便利貼）、便利貼（點選編輯、拖曳移動）、卡片顏色（實例層級，六色工具列）、卡片連結 hover 預覽浮窗
+- [x] **M5（第三部分）** 未連結提及（偵測內文提到卡片標題但未加連結，一鍵轉為連結）、白板小地圖
+- [x] **M5（第四部分）** 編輯器區塊擴充：圖片區塊（貼上／拖曳／`/圖片` 挑檔，先存 data URL）、表格區塊（`/表格` 插入 3×3 含表頭），兩者皆支援 Markdown 匯出
+- [x] **M0／同步**：Supabase 帳號（Email＋密碼）＋雲端同步——outbox 佇列推送（離線累積、上線補傳）、last-write-wins 合併、Realtime 跨裝置即時套用、首次登入自動上傳既有本地資料；也可「先離線使用」
+- [ ] M5+ 其餘 P1（分割視窗、多分頁、對齊輔助…）
+
+## 雲端同步設定（一次性）
+
+1. 開 [Supabase Dashboard](https://supabase.com/dashboard) → 您的專案 → **SQL Editor** → 貼上 [`supabase/schema.sql`](supabase/schema.sql) 整份執行（建表＋Row Level Security＋Realtime）。
+2. （可選）**Authentication → Sign In / Up → Email**：關閉 *Confirm email* 可以省去註冊確認信步驟。
+3. 打開 app → 註冊帳號 → 登入。既有的本地筆記會自動上傳；之後任何電腦登入同帳號即可同步。
+
+> 連線資訊在 `src/sync/supabaseClient.ts`（publishable key 屬公開金鑰，安全性由資料庫端 RLS 把關）；要換專案可設定 `VITE_SUPABASE_URL` / `VITE_SUPABASE_KEY` 環境變數。

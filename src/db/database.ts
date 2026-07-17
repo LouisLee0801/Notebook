@@ -1,11 +1,13 @@
 import Dexie, { type EntityTable, type Table } from 'dexie'
 import type {
   BoardEdge,
+  BoardNote,
   Card,
   CardInstance,
   CardLink,
   CardTag,
   JournalEntry,
+  Section,
   Tag,
   Whiteboard,
 } from '../types'
@@ -21,6 +23,17 @@ export const db = new Dexie('notebook') as Dexie & {
   journal: EntityTable<JournalEntry, 'date'>
   tags: EntityTable<Tag, 'id'>
   cardTags: Table<CardTag, [string, string]> // 複合主鍵 [cardId+tagId]
+  sections: EntityTable<Section, 'id'>
+  boardNotes: EntityTable<BoardNote, 'id'>
+  outbox: EntityTable<OutboxEntry, 'seq'>
+}
+
+// 待同步佇列：本地變更先記在這，登入且連線時依序推上 Supabase
+export interface OutboxEntry {
+  seq?: number
+  table: string
+  op: 'upsert' | 'delete'
+  key: Record<string, string>
 }
 
 db.version(1).stores({
@@ -52,4 +65,31 @@ db.version(4).stores({
   journal: 'date, cardId',
   tags: 'id, name',
   cardTags: '[cardId+tagId], cardId, tagId',
+})
+
+db.version(5).stores({
+  cards: 'id, updatedAt, createdAt, deletedAt',
+  whiteboards: 'id, updatedAt, name',
+  cardInstances: 'id, whiteboardId, cardId',
+  boardEdges: 'id, whiteboardId, fromInstanceId, toInstanceId',
+  cardLinks: '[fromCardId+toCardId], fromCardId, toCardId',
+  journal: 'date, cardId',
+  tags: 'id, name',
+  cardTags: '[cardId+tagId], cardId, tagId',
+  sections: 'id, whiteboardId',
+  boardNotes: 'id, whiteboardId',
+})
+
+db.version(6).stores({
+  cards: 'id, updatedAt, createdAt, deletedAt',
+  whiteboards: 'id, updatedAt, name',
+  cardInstances: 'id, whiteboardId, cardId',
+  boardEdges: 'id, whiteboardId, fromInstanceId, toInstanceId',
+  cardLinks: '[fromCardId+toCardId], fromCardId, toCardId',
+  journal: 'date, cardId',
+  tags: 'id, name',
+  cardTags: '[cardId+tagId], cardId, tagId',
+  sections: 'id, whiteboardId',
+  boardNotes: 'id, whiteboardId',
+  outbox: '++seq',
 })

@@ -54,6 +54,45 @@ describe('jsonToMarkdown', () => {
   })
 })
 
+describe('jsonToMarkdown: table and image', () => {
+  it('renders tables as markdown with header separator', () => {
+    const table = {
+      type: 'doc',
+      content: [
+        {
+          type: 'table',
+          content: [
+            {
+              type: 'tableRow',
+              content: [
+                { type: 'tableHeader', content: [{ type: 'paragraph', content: [{ type: 'text', text: '欄一' }] }] },
+                { type: 'tableHeader', content: [{ type: 'paragraph', content: [{ type: 'text', text: '欄二' }] }] },
+              ],
+            },
+            {
+              type: 'tableRow',
+              content: [
+                { type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'a' }] }] },
+                { type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'b' }] }] },
+              ],
+            },
+          ],
+        },
+      ],
+    }
+    const md = jsonToMarkdown(table)
+    expect(md).toBe('| 欄一 | 欄二 |\n| --- | --- |\n| a | b |')
+  })
+
+  it('renders images', () => {
+    const md = jsonToMarkdown({
+      type: 'doc',
+      content: [{ type: 'image', attrs: { src: 'data:image/png;base64,xyz' } }],
+    })
+    expect(md).toBe('![圖片](data:image/png;base64,xyz)')
+  })
+})
+
 describe('extractText / searchCards', () => {
   it('extracts plain text including card link labels', () => {
     const text = extractText(doc)

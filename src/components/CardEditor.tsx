@@ -4,7 +4,7 @@ import Placeholder from '@tiptap/extension-placeholder'
 import type { Content } from '@tiptap/core'
 import type { Card } from '../types'
 import { useCardStore } from '../store/useCardStore'
-import { baseExtensions } from '../editor/extensions'
+import { baseExtensions, fileToDataUrl } from '../editor/extensions'
 import { SlashMenu } from '../editor/slashMenu'
 import { CardLinkSuggestion } from '../editor/cardLink'
 import { cardToMarkdown, downloadMarkdown } from '../editor/markdown'
@@ -53,6 +53,33 @@ export function CardEditor({
       onUpdate: ({ editor }) => {
         const json = editor.getJSON()
         scheduleSave(() => void updateCard(card.id, { content: json }))
+      },
+      // 貼上/拖曳圖片 → 轉 data URL 插入圖片區塊（features.md 模組 2 P1）
+      editorProps: {
+        handlePaste: (view, event) => {
+          const file = Array.from(event.clipboardData?.files ?? []).find((f) =>
+            f.type.startsWith('image/'),
+          )
+          if (!file) return false
+          void fileToDataUrl(file).then((src) => {
+            const { schema, tr } = view.state
+            view.dispatch(tr.replaceSelectionWith(schema.nodes.image.create({ src })))
+          })
+          return true
+        },
+        handleDrop: (view, event) => {
+          const file = Array.from(event.dataTransfer?.files ?? []).find((f) =>
+            f.type.startsWith('image/'),
+          )
+          if (!file) return false
+          void fileToDataUrl(file).then((src) => {
+            const pos =
+              view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ??
+              view.state.selection.to
+            view.dispatch(view.state.tr.insert(pos, view.state.schema.nodes.image.create({ src })))
+          })
+          return true
+        },
       },
     },
     [card.id],

@@ -1,4 +1,6 @@
-import { Extension, Node, mergeAttributes } from '@tiptap/core'
+import { useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { Extension, Node, generateHTML, mergeAttributes, type JSONContent } from '@tiptap/core'
 import { PluginKey } from '@tiptap/pm/state'
 import Suggestion from '@tiptap/suggestion'
 import {
@@ -9,6 +11,7 @@ import {
 import { useCardStore } from '../store/useCardStore'
 import { useWhiteboardStore } from '../store/useWhiteboardStore'
 import { cardRepository } from '../db/cardRepository'
+import { baseExtensions } from './extensions'
 import { dropdownRenderer, type DropdownItem } from './suggestionDropdown'
 
 // 雙向連結（features.md 模組 2/4，P0）：
@@ -17,10 +20,36 @@ import { dropdownRenderer, type DropdownItem } from './suggestionDropdown'
 //   編輯器內的 NodeView 讀 store 即時標題，卡片改名會跟著更新。
 // - CardLinkSuggestion：輸入 `[[` 搜尋卡片並插入；查無卡片可直接建立。
 
+// 連結預覽浮窗（features.md 模組 4 P1）：hover 顯示卡片內容
+function LinkPreview({ cardId, anchor }: { cardId: string; anchor: DOMRect }) {
+  const card = useCardStore((s) => s.cards.find((c) => c.id === cardId))
+  const html = useMemo(() => {
+    if (!card) return ''
+    try {
+      return generateHTML(card.content as JSONContent, baseExtensions)
+    } catch {
+      return ''
+    }
+  }, [card])
+  if (!card) return null
+
+  const top = anchor.bottom + 6
+  const left = Math.min(anchor.left, window.innerWidth - 340)
+  return createPortal(
+    <div className="link-preview" style={{ top, left }}>
+      <div className="link-preview-title">{card.title || '未命名卡片'}</div>
+      <div className="tiptap link-preview-body" dangerouslySetInnerHTML={{ __html: html }} />
+    </div>,
+    document.body,
+  )
+}
+
 function CardLinkChip({ node }: NodeViewProps) {
   const cardId = node.attrs.cardId as string
   const liveTitle = useCardStore((s) => s.cards.find((c) => c.id === cardId)?.title)
   const title = liveTitle ?? (node.attrs.label as string) ?? ''
+  const [anchor, setAnchor] = useState<DOMRect | null>(null)
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   return (
     <NodeViewWrapper
@@ -30,8 +59,17 @@ function CardLinkChip({ node }: NodeViewProps) {
         useCardStore.getState().select(cardId)
         useWhiteboardStore.getState().openLibrary()
       }}
+      onMouseEnter={(e: React.MouseEvent) => {
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+        hoverTimer.current = setTimeout(() => setAnchor(rect), 350)
+      }}
+      onMouseLeave={() => {
+        if (hoverTimer.current) clearTimeout(hoverTimer.current)
+        setAnchor(null)
+      }}
     >
       {title || '未命名卡片'}
+      {anchor && <LinkPreview cardId={cardId} anchor={anchor} />}
     </NodeViewWrapper>
   )
 }
