@@ -2,6 +2,44 @@ import { useCardStore } from '../store/useCardStore'
 import { useWhiteboardStore } from '../store/useWhiteboardStore'
 import { useJournalStore } from '../store/useJournalStore'
 import { useTagStore } from '../store/useTagStore'
+import { useAuthStore } from '../store/useAuthStore'
+import { syncConfigured } from '../sync/supabaseClient'
+
+function AccountRow() {
+  const session = useAuthStore((s) => s.session)
+  const signOut = useAuthStore((s) => s.signOut)
+  const unskip = useAuthStore((s) => s.unskip)
+
+  return (
+    <div className="flex items-center justify-between gap-2 border-t border-gray-200 px-4 py-2">
+      {session ? (
+        <>
+          <span className="min-w-0 truncate text-[11px] text-gray-500" title={session.user.email}>
+            ☁️ {session.user.email}
+          </span>
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="shrink-0 text-[11px] text-gray-400 hover:text-gray-700"
+          >
+            登出
+          </button>
+        </>
+      ) : (
+        <>
+          <span className="text-[11px] text-gray-400">尚未同步（離線模式）</span>
+          <button
+            type="button"
+            onClick={unskip}
+            className="shrink-0 text-[11px] text-blue-500 hover:text-blue-700"
+          >
+            登入同步
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
 
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleString('zh-TW', {
@@ -197,6 +235,7 @@ export function Sidebar() {
         </button>
         <span className="px-2 text-[11px] text-gray-400">Ctrl/⌘+K 搜尋</span>
       </div>
+      {syncConfigured && <AccountRow />}
       <p className="border-t border-gray-200 px-4 py-2 text-[11px] leading-relaxed text-gray-400">
         拖曳卡片到白板即可上板；白板上雙擊空白處新增卡片
       </p>

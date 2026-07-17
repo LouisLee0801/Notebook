@@ -12,8 +12,12 @@ const log = (m) => console.log('✓', m)
 page.on('dialog', (d) => d.accept())
 
 await page.goto(BASE_URL)
+// M0：已設定 Supabase → 首次載入出現登入頁；測試走離線路徑
+await page.waitForSelector('text=先離線使用')
+await page.click('text=先離線使用')
 await page.waitForSelector('text=卡片庫')
-log('app loaded')
+await page.waitForSelector('text=尚未同步（離線模式）')
+log('app loaded (login gate -> offline mode)')
 
 // ---- M1：卡片 + 編輯器 ----
 await page.click('[aria-label="新增卡片"]')

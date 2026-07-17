@@ -6,6 +6,9 @@ import { JournalView } from './components/JournalView'
 import { TagView } from './components/TagView'
 import { TrashView } from './components/TrashView'
 import { CommandPalette } from './components/CommandPalette'
+import { LoginView } from './components/LoginView'
+import { syncConfigured } from './sync/supabaseClient'
+import { useAuthStore } from './store/useAuthStore'
 import { useCardStore } from './store/useCardStore'
 import { useWhiteboardStore } from './store/useWhiteboardStore'
 import { useJournalStore } from './store/useJournalStore'
@@ -22,6 +25,15 @@ export default function App() {
   const view = useWhiteboardStore((s) => s.view)
   const selected = cards.find((c) => c.id === selectedId) ?? null
   const [paletteOpen, setPaletteOpen] = useState(false)
+
+  const authReady = useAuthStore((s) => s.ready)
+  const session = useAuthStore((s) => s.session)
+  const skipped = useAuthStore((s) => s.skipped)
+  const initAuth = useAuthStore((s) => s.init)
+
+  useEffect(() => {
+    initAuth()
+  }, [initAuth])
 
   useEffect(() => {
     void loadCards()
@@ -41,6 +53,9 @@ export default function App() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
+
+  if (syncConfigured && !authReady) return null
+  if (syncConfigured && !session && !skipped) return <LoginView />
 
   return (
     <div className="flex h-screen bg-white text-gray-900">
