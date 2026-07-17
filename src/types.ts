@@ -44,6 +44,29 @@ export interface BoardEdge {
   arrow: 'none' | 'forward' | 'both'
 }
 
+// 白板上的具名區域（docs/data-model.md）
+export interface Section {
+  id: string
+  whiteboardId: string
+  name: string
+  x: number
+  y: number
+  width: number
+  height: number
+  collapsed: boolean
+}
+
+// 白板上的輕量便利貼（不入卡片庫，features.md 模組 3 P1）
+export interface BoardNote {
+  id: string
+  whiteboardId: string
+  text: string
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 // 卡片間引用（由編輯器內 cardLink 節點解析而來，用於反向連結）
 export interface CardLink {
   fromCardId: string

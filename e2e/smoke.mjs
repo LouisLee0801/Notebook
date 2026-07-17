@@ -86,6 +86,43 @@ await page.click('aside >> text=白板 1')
 await page.waitForSelector('.card-node-title:has-text("同步後的標題")')
 log('M2: board persists after reload')
 
+// ---- M5：白板深化（便利貼、區域、卡片顏色）----
+await page.click('button:has-text("＋ 便利貼")')
+await page.waitForSelector('.sticky-node')
+// 先把便利貼拖離中心，避免蓋住卡片節點
+{
+  const box = await page.locator('.sticky-node').boundingBox()
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x - 260, box.y + 200, { steps: 8 })
+  await page.mouse.up()
+}
+await page.click('.sticky-node') // 選取後才進入編輯
+await page.fill('textarea.sticky-node-input', '記得補充參考資料')
+await page.locator('textarea.sticky-node-input').blur()
+await page.waitForTimeout(300)
+log('M5: sticky note added, dragged and edited')
+
+await page.click('button:has-text("＋ 區域")')
+await page.waitForSelector('.section-node')
+log('M5: section added')
+
+await page.click('.card-node')
+await page.waitForSelector('.card-color-toolbar')
+await page.click('[aria-label="卡片顏色 黃"]')
+await page.waitForTimeout(300)
+const cardBg = await page.$eval('.card-node', (el) => getComputedStyle(el).backgroundColor)
+if (!cardBg.includes('255, 251, 235')) throw new Error('card color failed: ' + cardBg)
+log('M5: card color applied from toolbar')
+
+await page.reload()
+await page.click('aside >> text=白板 1')
+await page.waitForSelector('.sticky-node:has-text("記得補充參考資料")')
+await page.waitForSelector('.section-node')
+const persistedBg = await page.$eval('.card-node', (el) => getComputedStyle(el).backgroundColor)
+if (!persistedBg.includes('255, 251, 235')) throw new Error('color persistence failed')
+log('M5: sticky/section/color persist after reload')
+
 // ---- M3：日誌 + 雙向連結 ----
 await page.click('aside >> text=日誌')
 await page.waitForSelector('text=今天')
@@ -97,6 +134,12 @@ await page.waitForSelector('.slash-menu-item')
 await page.keyboard.press('Enter')
 await page.waitForSelector('.journal-editor .card-link:has-text("我的第一張卡片")')
 log('M3: [[ suggestion inserts card link in journal')
+
+// hover 連結 chip 顯示卡片內容預覽
+await page.hover('.journal-editor .card-link')
+await page.waitForSelector('.link-preview')
+await page.mouse.move(10, 10)
+log('M5: link hover preview appears')
 
 await page.waitForTimeout(800)
 await page.click('aside >> text=我的第一張卡片')

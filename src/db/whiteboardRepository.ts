@@ -1,5 +1,5 @@
 import { db } from './database'
-import type { BoardEdge, CardInstance, Whiteboard } from '../types'
+import type { BoardEdge, BoardNote, CardInstance, Section, Whiteboard } from '../types'
 
 export const whiteboardRepository = {
   async list(): Promise<Whiteboard[]> {
@@ -22,25 +22,36 @@ export const whiteboardRepository = {
     await db.whiteboards.update(id, { name, updatedAt: now })
   },
 
-  /** 刪除白板連同其上的實例與連線；卡片本身不受影響 */
+  /** 刪除白板連同其上的實例、連線、區域與便利貼；卡片本身不受影響 */
   async remove(id: string): Promise<void> {
-    await db.transaction('rw', [db.whiteboards, db.cardInstances, db.boardEdges], async () => {
-      await db.cardInstances.where('whiteboardId').equals(id).delete()
-      await db.boardEdges.where('whiteboardId').equals(id).delete()
-      await db.whiteboards.delete(id)
-    })
+    await db.transaction(
+      'rw',
+      [db.whiteboards, db.cardInstances, db.boardEdges, db.sections, db.boardNotes],
+      async () => {
+        await db.cardInstances.where('whiteboardId').equals(id).delete()
+        await db.boardEdges.where('whiteboardId').equals(id).delete()
+        await db.sections.where('whiteboardId').equals(id).delete()
+        await db.boardNotes.where('whiteboardId').equals(id).delete()
+        await db.whiteboards.delete(id)
+      },
+    )
   },
 }
 
 export const boardItemsRepository = {
-  async listByBoard(
-    whiteboardId: string,
-  ): Promise<{ instances: CardInstance[]; edges: BoardEdge[] }> {
-    const [instances, edges] = await Promise.all([
+  async listByBoard(whiteboardId: string): Promise<{
+    instances: CardInstance[]
+    edges: BoardEdge[]
+    sections: Section[]
+    notes: BoardNote[]
+  }> {
+    const [instances, edges, sections, notes] = await Promise.all([
       db.cardInstances.where('whiteboardId').equals(whiteboardId).toArray(),
       db.boardEdges.where('whiteboardId').equals(whiteboardId).toArray(),
+      db.sections.where('whiteboardId').equals(whiteboardId).toArray(),
+      db.boardNotes.where('whiteboardId').equals(whiteboardId).toArray(),
     ])
-    return { instances, edges }
+    return { instances, edges, sections, notes }
   },
 
   async addInstance(
@@ -84,6 +95,10 @@ export const boardItemsRepository = {
     })
   },
 
+  async setInstanceColor(id: string, color: string | null): Promise<void> {
+    await db.cardInstances.update(id, { color })
+  },
+
   async addEdge(edge: BoardEdge): Promise<void> {
     await db.boardEdges.add(edge)
   },
@@ -94,5 +109,60 @@ export const boardItemsRepository = {
 
   async removeEdge(id: string): Promise<void> {
     await db.boardEdges.delete(id)
+  },
+
+  // ---- Section 區域 ----
+
+  async addSection(whiteboardId: string, x: number, y: number): Promise<Section> {
+    const section: Section = {
+      id: crypto.randomUUID(),
+      whiteboardId,
+      name: '新區域',
+      x,
+      y,
+      width: 420,
+      height: 300,
+      collapsed: false,
+    }
+    await db.sections.add(section)
+    return section
+  },
+
+  async updateSection(
+    id: string,
+    patch: Partial<Pick<Section, 'name' | 'x' | 'y' | 'width' | 'height' | 'collapsed'>>,
+  ): Promise<void> {
+    await db.sections.update(id, patch)
+  },
+
+  async removeSection(id: string): Promise<void> {
+    await db.sections.delete(id)
+  },
+
+  // ---- 便利貼 ----
+
+  async addNote(whiteboardId: string, x: number, y: number): Promise<BoardNote> {
+    const note: BoardNote = {
+      id: crypto.randomUUID(),
+      whiteboardId,
+      text: '',
+      x,
+      y,
+      width: 200,
+      height: 140,
+    }
+    await db.boardNotes.add(note)
+    return note
+  },
+
+  async updateNote(
+    id: string,
+    patch: Partial<Pick<BoardNote, 'text' | 'x' | 'y' | 'width' | 'height'>>,
+  ): Promise<void> {
+    await db.boardNotes.update(id, patch)
+  },
+
+  async removeNote(id: string): Promise<void> {
+    await db.boardNotes.delete(id)
   },
 }
