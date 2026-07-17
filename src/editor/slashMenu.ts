@@ -1,11 +1,11 @@
 import { Extension, type Editor, type Range } from '@tiptap/core'
-import Suggestion, { type SuggestionProps, type SuggestionKeyDownProps } from '@tiptap/suggestion'
+import { PluginKey } from '@tiptap/pm/state'
+import Suggestion from '@tiptap/suggestion'
+import { dropdownRenderer, type DropdownItem } from './suggestionDropdown'
 
-// `/` 指令選單（features.md 模組 2，P0）。
-// 用 @tiptap/suggestion 實作：輸入 / 之後過濾指令、鍵盤上下選擇、Enter 執行。
+// `/` 指令選單（features.md 模組 2，P0）
 
-export interface SlashCommand {
-  title: string
+interface SlashCommand extends DropdownItem {
   keywords: string
   run: (editor: Editor, range: Range) => void
 }
@@ -66,77 +66,6 @@ const COMMANDS: SlashCommand[] = [
   },
 ]
 
-class SlashMenuView {
-  private el: HTMLDivElement
-  private selectedIndex = 0
-  private props: SuggestionProps<SlashCommand>
-
-  constructor(props: SuggestionProps<SlashCommand>) {
-    this.props = props
-    this.el = document.createElement('div')
-    this.el.className = 'slash-menu'
-    document.body.appendChild(this.el)
-    this.render()
-  }
-
-  update(props: SuggestionProps<SlashCommand>) {
-    this.props = props
-    if (this.selectedIndex >= props.items.length) this.selectedIndex = 0
-    this.render()
-  }
-
-  onKeyDown({ event }: SuggestionKeyDownProps): boolean {
-    const { items } = this.props
-    if (items.length === 0) return false
-    if (event.key === 'ArrowDown') {
-      this.selectedIndex = (this.selectedIndex + 1) % items.length
-      this.render()
-      return true
-    }
-    if (event.key === 'ArrowUp') {
-      this.selectedIndex = (this.selectedIndex - 1 + items.length) % items.length
-      this.render()
-      return true
-    }
-    if (event.key === 'Enter') {
-      this.props.command(items[this.selectedIndex])
-      return true
-    }
-    return false
-  }
-
-  destroy() {
-    this.el.remove()
-  }
-
-  private render() {
-    const rect = this.props.clientRect?.()
-    if (rect) {
-      this.el.style.left = `${rect.left + window.scrollX}px`
-      this.el.style.top = `${rect.bottom + window.scrollY + 4}px`
-    }
-    this.el.innerHTML = ''
-    if (this.props.items.length === 0) {
-      const empty = document.createElement('div')
-      empty.className = 'slash-menu-empty'
-      empty.textContent = '沒有符合的區塊'
-      this.el.appendChild(empty)
-      return
-    }
-    this.props.items.forEach((item, index) => {
-      const button = document.createElement('button')
-      button.type = 'button'
-      button.className = 'slash-menu-item' + (index === this.selectedIndex ? ' is-selected' : '')
-      button.textContent = item.title
-      button.addEventListener('mousedown', (e) => {
-        e.preventDefault()
-        this.props.command(item)
-      })
-      this.el.appendChild(button)
-    })
-  }
-}
-
 export const SlashMenu = Extension.create({
   name: 'slashMenu',
 
@@ -144,8 +73,8 @@ export const SlashMenu = Extension.create({
     return [
       Suggestion<SlashCommand>({
         editor: this.editor,
+        pluginKey: new PluginKey('slashMenu'),
         char: '/',
-        startOfLine: false,
         command: ({ editor, range, props }) => props.run(editor, range),
         items: ({ query }) => {
           const q = query.toLowerCase()
@@ -153,27 +82,7 @@ export const SlashMenu = Extension.create({
             (c) => c.title.toLowerCase().includes(q) || c.keywords.toLowerCase().includes(q),
           )
         },
-        render: () => {
-          let view: SlashMenuView | null = null
-          return {
-            onStart: (props) => {
-              view = new SlashMenuView(props)
-            },
-            onUpdate: (props) => view?.update(props),
-            onKeyDown: (props) => {
-              if (props.event.key === 'Escape') {
-                view?.destroy()
-                view = null
-                return true
-              }
-              return view?.onKeyDown(props) ?? false
-            },
-            onExit: () => {
-              view?.destroy()
-              view = null
-            },
-          }
-        },
+        render: dropdownRenderer<SlashCommand>('沒有符合的區塊'),
       }),
     ]
   },

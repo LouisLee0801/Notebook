@@ -2,8 +2,10 @@ import { useEffect } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { CardEditor } from './components/CardEditor'
 import { WhiteboardView } from './components/WhiteboardView'
+import { JournalView } from './components/JournalView'
 import { useCardStore } from './store/useCardStore'
 import { useWhiteboardStore } from './store/useWhiteboardStore'
+import { useJournalStore } from './store/useJournalStore'
 
 export default function App() {
   const loadCards = useCardStore((s) => s.load)
@@ -11,13 +13,15 @@ export default function App() {
   const cards = useCardStore((s) => s.cards)
   const selectedId = useCardStore((s) => s.selectedId)
   const loadBoards = useWhiteboardStore((s) => s.load)
+  const loadJournal = useJournalStore((s) => s.load)
   const view = useWhiteboardStore((s) => s.view)
   const selected = cards.find((c) => c.id === selectedId) ?? null
 
   useEffect(() => {
     void loadCards()
     void loadBoards()
-  }, [loadCards, loadBoards])
+    void loadJournal()
+  }, [loadCards, loadBoards, loadJournal])
 
   return (
     <div className="flex h-screen bg-white text-gray-900">
@@ -25,6 +29,8 @@ export default function App() {
       <main className="min-w-0 flex-1">
         {view.type === 'board' ? (
           <WhiteboardView boardId={view.boardId} />
+        ) : view.type === 'journal' ? (
+          <JournalView />
         ) : !cardsLoaded ? null : selected ? (
           <CardEditor key={selected.id} card={selected} />
         ) : (

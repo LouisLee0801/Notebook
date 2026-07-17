@@ -86,6 +86,31 @@ await page.click('aside >> text=白板 1')
 await page.waitForSelector('.card-node-title:has-text("同步後的標題")')
 log('M2: board persists after reload')
 
+// ---- M3：日誌 + 雙向連結 ----
+await page.click('aside >> text=日誌')
+await page.waitForSelector('text=今天')
+log('M3: journal opens with today entry')
+
+await page.click('.journal-editor .tiptap')
+await page.keyboard.type('參考 [[我的第一')
+await page.waitForSelector('.slash-menu-item')
+await page.keyboard.press('Enter')
+await page.waitForSelector('.journal-editor .card-link:has-text("我的第一張卡片")')
+log('M3: [[ suggestion inserts card link in journal')
+
+await page.waitForTimeout(800)
+await page.click('aside >> text=我的第一張卡片')
+await page.waitForSelector('text=反向連結')
+await page.waitForSelector('button:has-text("日誌")')
+log('M3: backlinks panel shows the journal entry (acceptance)')
+
+// 點反向連結面板無法直達日誌卡（開在卡片視圖），改驗證 chip 點擊導航
+await page.click('aside >> text=日誌')
+await page.waitForSelector('.journal-editor .card-link')
+await page.click('.journal-editor .card-link')
+await page.waitForSelector('input[placeholder="未命名卡片"]')
+log('M3: clicking a card link navigates to the card')
+
 // ---- 清理 ----
 await page.click('aside >> text=卡片庫')
 while (await page.$('[aria-label="刪除白板"]')) {

@@ -44,6 +44,19 @@ export interface BoardEdge {
   arrow: 'none' | 'forward' | 'both'
 }
 
+// 卡片間引用（由編輯器內 cardLink 節點解析而來，用於反向連結）
+export interface CardLink {
+  fromCardId: string
+  fromBlockId: string
+  toCardId: string
+}
+
+// 日誌：以日期為 key 的特殊卡片（重用 Card 與連結機制）
+export interface JournalEntry {
+  date: string // YYYY-MM-DD
+  cardId: string
+}
+
 export function createEmptyCard(now: number): Card {
   return {
     id: crypto.randomUUID(),

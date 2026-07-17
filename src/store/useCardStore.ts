@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Card } from '../types'
 import { cardRepository } from '../db/cardRepository'
+import { linkRepository } from '../db/linkRepository'
 
 interface CardStore {
   cards: Card[]
@@ -33,6 +34,8 @@ export const useCardStore = create<CardStore>((set, get) => ({
 
   updateCard: async (id, patch) => {
     await cardRepository.update(id, patch)
+    // 存檔時重建對外連結（docs/data-model.md 設計要點 2）
+    if (patch.content !== undefined) await linkRepository.rebuildFromContent(id, patch.content)
     const now = Date.now()
     const cards = get()
       .cards.map((c) => (c.id === id ? { ...c, ...patch, updatedAt: now } : c))

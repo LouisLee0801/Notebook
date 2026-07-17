@@ -1,5 +1,6 @@
 import { useCardStore } from '../store/useCardStore'
 import { useWhiteboardStore } from '../store/useWhiteboardStore'
+import { useJournalStore } from '../store/useJournalStore'
 
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleString('zh-TW', {
@@ -11,7 +12,10 @@ function formatTime(ts: number): string {
 }
 
 export function Sidebar() {
-  const cards = useCardStore((s) => s.cards)
+  const allCards = useCardStore((s) => s.cards)
+  const journalCardIds = useJournalStore((s) => s.journalCardIds)
+  // 日誌卡片不佔卡片庫列表（它們住在日誌時間軸裡）
+  const cards = allCards.filter((c) => !journalCardIds.has(c.id))
   const selectedId = useCardStore((s) => s.selectedId)
   const selectCard = useCardStore((s) => s.select)
   const createCard = useCardStore((s) => s.createCard)
@@ -21,6 +25,7 @@ export function Sidebar() {
   const view = useWhiteboardStore((s) => s.view)
   const openLibrary = useWhiteboardStore((s) => s.openLibrary)
   const openBoard = useWhiteboardStore((s) => s.openBoard)
+  const openJournal = useWhiteboardStore((s) => s.openJournal)
   const createBoard = useWhiteboardStore((s) => s.createBoard)
   const renameBoard = useWhiteboardStore((s) => s.renameBoard)
   const deleteBoard = useWhiteboardStore((s) => s.deleteBoard)
@@ -30,6 +35,17 @@ export function Sidebar() {
       <div className="border-b border-gray-200 px-4 py-3">
         <h1 className="text-sm font-bold text-gray-800">Notebook</h1>
       </div>
+
+      {/* 日誌：開啟直達今日 */}
+      <button
+        type="button"
+        onClick={openJournal}
+        className={`mx-2 mt-2 rounded-md px-3 py-1.5 text-left text-sm hover:bg-gray-200 ${
+          view.type === 'journal' ? 'bg-gray-200 font-medium text-gray-900' : 'text-gray-700'
+        }`}
+      >
+        📅 日誌
+      </button>
 
       {/* 白板列表 */}
       <div className="flex items-center justify-between px-4 pt-3 pb-1">

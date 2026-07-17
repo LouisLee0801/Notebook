@@ -2,7 +2,10 @@ import { create } from 'zustand'
 import type { Whiteboard } from '../types'
 import { whiteboardRepository } from '../db/whiteboardRepository'
 
-export type View = { type: 'library' } | { type: 'board'; boardId: string }
+export type View =
+  | { type: 'library' }
+  | { type: 'board'; boardId: string }
+  | { type: 'journal' }
 
 interface WhiteboardStore {
   boards: Whiteboard[]
@@ -10,6 +13,7 @@ interface WhiteboardStore {
   load: () => Promise<void>
   openLibrary: () => void
   openBoard: (boardId: string) => void
+  openJournal: () => void
   createBoard: () => Promise<void>
   renameBoard: (id: string, name: string) => Promise<void>
   deleteBoard: (id: string) => Promise<void>
@@ -25,6 +29,7 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
 
   openLibrary: () => set({ view: { type: 'library' } }),
   openBoard: (boardId) => set({ view: { type: 'board', boardId } }),
+  openJournal: () => set({ view: { type: 'journal' } }),
 
   createBoard: async () => {
     const board = await whiteboardRepository.create(`白板 ${get().boards.length + 1}`)

@@ -119,6 +119,27 @@
   height: 0;
 }
 
+/* ---- 卡片連結 chip ---- */
+
+.card-link {
+  display: inline;
+  color: #2563eb;
+  background: rgb(37 99 235 / 0.08);
+  border-radius: 0.25rem;
+  padding: 0.05rem 0.25rem;
+  cursor: pointer;
+  white-space: normal;
+}
+
+.card-link:hover {
+  background: rgb(37 99 235 / 0.16);
+}
+
+/* 日誌內嵌編輯器：高度依內容 */
+.journal-editor .tiptap {
+  min-height: 3.5rem;
+}
+
 /* ---- 白板卡片節點 ---- */
 
 .card-node {
@@ -191,6 +212,12 @@
 .slash-menu-item.is-selected,
 .slash-menu-item:hover {
   background: #f3f4f6;
+}
+
+.slash-menu-subtitle {
+  margin-left: 0.5rem;
+  font-size: 0.7rem;
+  color: #9ca3af;
 }
 
 .slash-menu-empty {
