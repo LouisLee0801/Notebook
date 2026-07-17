@@ -22,4 +22,21 @@
 
 ## 開始開發
 
-請先閱讀 [docs/development-plans.md](docs/development-plans.md)，選定一套 Plan 後依里程碑進行。
+已採用 [docs/development-plans.md](docs/development-plans.md) 選定的 **Plan A+**（React + TypeScript + Vite + Tailwind + Zustand + Dexie + TipTap，之後接 Supabase 同步）。
+
+```bash
+npm install
+npm run dev      # 開發伺服器 http://localhost:5173
+npm run test     # Vitest 單元測試
+npm run lint     # ESLint
+npm run build    # 型別檢查 + 產出 dist/
+npm run e2e      # 核心流程冒煙測試（需先啟動 dev server）
+```
+
+### 進度
+
+- [x] **M1** 卡片 + 編輯器骨架：卡片 CRUD（軟刪除）、卡片庫、TipTap block 編輯器（P0 區塊、行內格式、Markdown 快捷、`/` 指令選單）、IndexedDB 本地持久化
+- [ ] M2 白板
+- [ ] M3 雙向連結 + 日誌
+- [ ] M4 搜尋 + 收尾
+- [ ] M0/同步：Supabase（帳號 + 雲端同步）

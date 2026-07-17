@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/types.ts","./src/vite-env.d.ts","./src/components/CardEditor.tsx","./src/components/CardLibrary.tsx","./src/db/cardRepository.test.ts","./src/db/cardRepository.ts","./src/db/database.ts","./src/editor/slashMenu.ts","./src/store/useCardStore.ts"],"version":"6.0.3"}

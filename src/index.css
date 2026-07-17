@@ -1,0 +1,156 @@
+@import 'tailwindcss';
+
+/* ---- TipTap 編輯器內容樣式 ---- */
+
+.tiptap {
+  outline: none;
+  min-height: 50vh;
+  line-height: 1.7;
+  color: #1f2937;
+}
+
+.tiptap > * + * {
+  margin-top: 0.5rem;
+}
+
+.tiptap h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-top: 1.25rem;
+}
+
+.tiptap h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-top: 1rem;
+}
+
+.tiptap h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 0.75rem;
+}
+
+.tiptap ul,
+.tiptap ol {
+  padding-left: 1.5rem;
+}
+
+.tiptap ul {
+  list-style: disc;
+}
+
+.tiptap ol {
+  list-style: decimal;
+}
+
+.tiptap blockquote {
+  border-left: 3px solid #d1d5db;
+  padding-left: 1rem;
+  color: #4b5563;
+}
+
+.tiptap hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 1.25rem 0;
+}
+
+.tiptap code {
+  background: #f3f4f6;
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.9em;
+}
+
+.tiptap pre {
+  background: #111827;
+  color: #f9fafb;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+}
+
+.tiptap pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+.tiptap mark {
+  background: #fef08a;
+  border-radius: 0.15rem;
+  padding: 0 0.1rem;
+}
+
+.tiptap a {
+  color: #2563eb;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* 待辦清單 */
+.tiptap ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0.25rem;
+}
+
+.tiptap ul[data-type='taskList'] li {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tiptap ul[data-type='taskList'] li > label {
+  flex-shrink: 0;
+  margin-top: 0.3rem;
+}
+
+.tiptap ul[data-type='taskList'] li[data-checked='true'] > div {
+  color: #9ca3af;
+  text-decoration: line-through;
+}
+
+/* Placeholder */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #d1d5db;
+  pointer-events: none;
+  height: 0;
+}
+
+/* ---- Slash 指令選單 ---- */
+
+.slash-menu {
+  position: absolute;
+  z-index: 50;
+  min-width: 10rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+  padding: 0.25rem;
+}
+
+.slash-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.35rem;
+  font-size: 0.875rem;
+  color: #1f2937;
+}
+
+.slash-menu-item.is-selected,
+.slash-menu-item:hover {
+  background: #f3f4f6;
+}
+
+.slash-menu-empty {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
