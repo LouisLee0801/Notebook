@@ -47,7 +47,8 @@ log('M1: reload persistence')
 // ---- M2：白板 ----
 await page.click('[aria-label="新增白板"]')
 await page.waitForSelector('.react-flow__pane')
-log('M2: whiteboard created and opened')
+await page.waitForSelector('.react-flow__minimap')
+log('M2: whiteboard created and opened (with minimap)')
 
 // 雙擊空白處新增卡片（會開啟右側編輯抽屜）
 await page.dblclick('.react-flow__pane', { position: { x: 500, y: 300 } })
@@ -153,6 +154,23 @@ await page.waitForSelector('.journal-editor .card-link')
 await page.click('.journal-editor .card-link')
 await page.waitForSelector('input[placeholder="未命名卡片"]')
 log('M3: clicking a card link navigates to the card')
+
+// ---- M5：未連結提及 ----
+await page.click('[aria-label="新增卡片"]')
+await page.waitForFunction(
+  () => document.querySelector('input[placeholder="未命名卡片"]')?.value === '',
+)
+await page.fill('input[placeholder="未命名卡片"]', '隨手記')
+await page.click('.tiptap')
+await page.keyboard.type('這段提到了我的第一張卡片但沒有加連結。')
+await page.waitForTimeout(800)
+
+await page.click('aside >> text=我的第一張卡片')
+await page.waitForSelector('text=未連結提及')
+await page.click('button:has-text("轉為連結")')
+await page.waitForSelector('text=未連結提及', { state: 'detached' })
+await page.waitForSelector('main >> text=隨手記')
+log('M5: unlinked mention detected and converted to a backlink')
 
 // ---- M4：標籤、搜尋、垃圾桶 ----
 await page.click('aside >> text=我的第一張卡片')

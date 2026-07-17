@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Background,
   MarkerType,
+  MiniMap,
   ReactFlow,
   ReactFlowProvider,
   useEdgesState,
@@ -365,6 +366,7 @@ function Canvas({ boardId }: { boardId: string }) {
           proOptions={{ hideAttribution: true }}
         >
           <Background gap={24} />
+          <MiniMap pannable zoomable className="!h-28 !w-40" />
         </ReactFlow>
       </div>
 
