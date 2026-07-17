@@ -119,6 +119,50 @@
   height: 0;
 }
 
+/* ---- 白板卡片節點 ---- */
+
+.card-node {
+  width: 100%;
+  height: 100%;
+  min-height: 48px;
+  overflow: hidden;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.6rem;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+  padding: 0.6rem 0.8rem;
+}
+
+.card-node.is-selected {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 2px rgb(96 165 250 / 0.35);
+}
+
+.card-node-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #111827;
+  margin-bottom: 0.25rem;
+}
+
+.card-node-body {
+  min-height: 0;
+  font-size: 0.8rem;
+  color: #374151;
+  pointer-events: none;
+}
+
+.card-node-body > * + * {
+  margin-top: 0.3rem;
+}
+
+.card-node-handle {
+  width: 10px !important;
+  height: 10px !important;
+  background: #9ca3af !important;
+  border: 2px solid white !important;
+}
+
 /* ---- Slash 指令選單 ---- */
 
 .slash-menu {

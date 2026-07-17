@@ -22,6 +22,7 @@
     "@tiptap/react": "^2.27.2",
     "@tiptap/starter-kit": "^2.27.2",
     "@tiptap/suggestion": "^2.27.2",
+    "@xyflow/react": "^12.11.2",
     "dexie": "^4.4.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

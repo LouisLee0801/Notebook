@@ -8,7 +8,7 @@ interface CardStore {
   loaded: boolean
   load: () => Promise<void>
   select: (id: string | null) => void
-  createCard: () => Promise<void>
+  createCard: () => Promise<Card>
   updateCard: (id: string, patch: Partial<Pick<Card, 'title' | 'content'>>) => Promise<void>
   deleteCard: (id: string) => Promise<void>
 }
@@ -28,6 +28,7 @@ export const useCardStore = create<CardStore>((set, get) => ({
   createCard: async () => {
     const card = await cardRepository.create()
     set({ cards: [card, ...get().cards], selectedId: card.id })
+    return card
   },
 
   updateCard: async (id, patch) => {
