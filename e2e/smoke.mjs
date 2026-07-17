@@ -125,6 +125,24 @@ await page.waitForSelector('h1:has-text("# 靈感")')
 await page.waitForSelector('text=我的第一張卡片')
 log('M4: tag page lists tagged cards')
 
+// ---- M5：標籤資料庫（屬性、表格、看板）----
+await page.click('button:has-text("＋ 屬性")')
+await page.fill('input[placeholder="屬性名稱"]', '狀態')
+await page.selectOption('select[aria-label="屬性型別"]', 'select')
+await page.fill('input[placeholder="選項（逗號分隔）"]', '待讀,閱讀中,完成')
+await page.click('button:has-text("新增"):right-of(input[placeholder="屬性名稱"])')
+await page.waitForSelector('th >> text=狀態')
+log('M5: custom select property added')
+
+await page.selectOption('td select[aria-label="狀態"]', '閱讀中')
+await page.waitForTimeout(400)
+await page.click('button:has-text("看板")')
+await page.waitForSelector('[data-kanban-column="閱讀中"] >> text=我的第一張卡片')
+log('M5: kanban groups card under its select value')
+
+await page.click('button:has-text("表格")')
+await page.waitForSelector('th >> text=狀態')
+
 // Cmd+K 全文搜尋跳轉
 await page.keyboard.press('Control+k')
 await page.waitForSelector('input[placeholder="搜尋卡片、白板，或執行指令…"]')
