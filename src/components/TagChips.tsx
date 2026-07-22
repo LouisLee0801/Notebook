@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTagStore } from '../store/useTagStore'
 import { useWhiteboardStore } from '../store/useWhiteboardStore'
+import { tagColor } from './tagColors'
 
 // 卡片上的標籤列（features.md 模組 5，P0：加/移除標籤）
 export function TagChips({ cardId }: { cardId: string }) {
@@ -25,28 +26,32 @@ export function TagChips({ cardId }: { cardId: string }) {
 
   return (
     <div className="mt-2 flex flex-wrap items-center gap-1.5">
-      {mine.map((tag) => (
-        <span
-          key={tag.id}
-          className="group inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"
-        >
-          <button
-            type="button"
-            onClick={() => useWhiteboardStore.getState().openTag(tag.id)}
-            className="hover:underline"
+      {mine.map((tag) => {
+        const c = tagColor(tag.color)
+        return (
+          <span
+            key={tag.id}
+            className="group inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
+            style={{ background: c.chipBg, color: c.chipText }}
           >
-            #{tag.name}
-          </button>
-          <button
-            type="button"
-            aria-label={`移除標籤 ${tag.name}`}
-            onClick={() => void removeTagFromCard(cardId, tag.id)}
-            className="hidden text-emerald-400 group-hover:inline hover:text-emerald-700"
-          >
-            ✕
-          </button>
-        </span>
-      ))}
+            <button
+              type="button"
+              onClick={() => useWhiteboardStore.getState().openTag(tag.id)}
+              className="hover:underline"
+            >
+              #{tag.name}
+            </button>
+            <button
+              type="button"
+              aria-label={`移除標籤 ${tag.name}`}
+              onClick={() => void removeTagFromCard(cardId, tag.id)}
+              className="hidden opacity-60 group-hover:inline hover:opacity-100"
+            >
+              ✕
+            </button>
+          </span>
+        )
+      })}
       {adding ? (
         <input
           autoFocus

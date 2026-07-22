@@ -175,35 +175,37 @@ class SyncEngine {
     if (this.flushing || !this.session || !navigator.onLine) return
     this.flushing = true
     try {
-      for (;;) {
-        const entry = await db.outbox.orderBy('seq').first()
-        if (!entry) break
+      // 一次取快照逐筆處理：某一筆失敗（例如某張表還沒跑遷移、缺欄位）只留下它自己，
+      // 其餘照推，避免單一壞掉的變更卡住整個佇列。
+      const entries = await db.outbox.orderBy('seq').toArray()
+      let firstError: string | null = null
+      for (const entry of entries) {
         const spec = specByName.get(entry.table)
         if (!spec) {
           await db.outbox.delete(entry.seq!)
           continue
         }
-        if (entry.op === 'delete') {
-          const { error } = await supabase.from(spec.name).delete().match(entry.key)
-          if (error) throw error
-        } else {
-          const row = (await db.table(spec.name).get(dexieKey(spec, entry.key))) as Row | undefined
-          if (row) {
-            const payload = {
-              ...row,
-              user_id: this.session.user.id,
-              client_id: this.clientId,
-            }
-            const { error } = await supabase.from(spec.name).upsert(payload, {
-              onConflict: spec.keys.length === 1 ? spec.keys[0] : `user_id,${spec.keys.join(',')}`,
-            })
+        try {
+          if (entry.op === 'delete') {
+            const { error } = await supabase.from(spec.name).delete().match(entry.key)
             if (error) throw error
+          } else {
+            const row = (await db.table(spec.name).get(dexieKey(spec, entry.key))) as Row | undefined
+            if (row) {
+              const payload = { ...row, user_id: this.session.user.id, client_id: this.clientId }
+              const { error } = await supabase.from(spec.name).upsert(payload, {
+                onConflict: spec.keys.length === 1 ? spec.keys[0] : `user_id,${spec.keys.join(',')}`,
+              })
+              if (error) throw error
+            }
           }
+          await db.outbox.delete(entry.seq!)
+        } catch (err) {
+          // 保留此筆，下次再試（30 秒後或重新上線時）
+          if (!firstError) firstError = `${entry.table}: ${(err as Error).message}`
         }
-        await db.outbox.delete(entry.seq!)
       }
-    } catch (err) {
-      console.warn('[sync] 推送暫停，稍後重試：', (err as Error).message)
+      if (firstError) console.warn('[sync] 部分變更稍後重試：', firstError)
     } finally {
       this.flushing = false
     }

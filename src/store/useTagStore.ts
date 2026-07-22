@@ -9,6 +9,7 @@ interface TagStore {
   addTagToCard: (cardId: string, name: string) => Promise<void>
   removeTagFromCard: (cardId: string, tagId: string) => Promise<void>
   renameTag: (id: string, name: string) => Promise<void>
+  setTagColor: (id: string, color: string | null) => Promise<void>
   deleteTag: (id: string) => Promise<void>
   addProperty: (tagId: string, property: TagProperty) => Promise<void>
   removeProperty: (tagId: string, propertyId: string) => Promise<void>
@@ -43,6 +44,11 @@ export const useTagStore = create<TagStore>((set, get) => ({
   renameTag: async (id, name) => {
     await tagRepository.rename(id, name)
     set({ tags: get().tags.map((t) => (t.id === id ? { ...t, name } : t)) })
+  },
+
+  setTagColor: async (id, color) => {
+    await tagRepository.setColor(id, color)
+    set({ tags: get().tags.map((t) => (t.id === id ? { ...t, color } : t)) })
   },
 
   deleteTag: async (id) => {

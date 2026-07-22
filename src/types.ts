@@ -86,6 +86,7 @@ export interface Tag {
   id: string
   name: string
   properties: TagProperty[]
+  color?: string | null // 色票 key（見 components/tagColors.ts），null = 預設
 }
 
 export interface CardTag {

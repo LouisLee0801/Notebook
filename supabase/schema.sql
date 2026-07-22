@@ -85,9 +85,12 @@ create table if not exists public.tags (
   id text primary key,
   name text not null,
   properties jsonb not null default '[]',
+  color text,
   user_id uuid not null default auth.uid(),
   client_id text
 );
+-- 既有專案補欄位（重跑整份也安全）
+alter table public.tags add column if not exists color text;
 
 create table if not exists public."cardTags" (
   "cardId" text not null,

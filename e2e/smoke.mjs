@@ -219,13 +219,20 @@ await page.waitForSelector('button:has-text("＋ 標籤")')
 await page.click('button:has-text("＋ 標籤")')
 await page.keyboard.type('靈感')
 await page.keyboard.press('Enter')
-await page.waitForSelector('aside >> text=# 靈感')
+await page.waitForSelector('aside li:has-text("靈感")')
 log('M4: tag added to card, appears in sidebar')
 
-await page.click('aside >> text=# 靈感')
+await page.click('aside li:has-text("靈感") button')
 await page.waitForSelector('h1:has-text("# 靈感")')
 await page.waitForSelector('text=我的第一張卡片')
 log('M4: tag page lists tagged cards')
+
+// 標籤顏色（#2）：挑藍色，標題文字轉為藍色
+await page.click('button[aria-label="標籤顏色 藍"]')
+await page.waitForTimeout(200)
+const h1Color = await page.$eval('h1:has-text("# 靈感")', (el) => getComputedStyle(el).color)
+if (!h1Color.includes('29, 78, 216')) throw new Error('tag color not applied: ' + h1Color)
+log('新: tag color applies (#2)')
 
 // ---- M5：標籤資料庫（屬性、表格、看板）----
 await page.click('button:has-text("＋ 屬性")')
