@@ -4,6 +4,7 @@ import { useCardStore } from '../store/useCardStore'
 import { useTagStore } from '../store/useTagStore'
 import { useWhiteboardStore } from '../store/useWhiteboardStore'
 import { PropertyCell } from './PropertyCell'
+import { TAG_COLORS, tagColor } from './tagColors'
 
 // 標籤即資料庫（features.md 模組 5，P1）：
 // 自訂屬性 + 表格檢視（點欄位標題排序）+ 看板檢視（依單選屬性分欄，拖曳改值）
@@ -110,6 +111,7 @@ export function TagView({ tagId }: { tagId: string }) {
   const tag = useTagStore((s) => s.tags.find((t) => t.id === tagId))
   const cardTags = useTagStore((s) => s.cardTags)
   const renameTag = useTagStore((s) => s.renameTag)
+  const setTagColor = useTagStore((s) => s.setTagColor)
   const deleteTag = useTagStore((s) => s.deleteTag)
   const removeProperty = useTagStore((s) => s.removeProperty)
   const setValue = useTagStore((s) => s.setValue)
@@ -170,7 +172,27 @@ export function TagView({ tagId }: { tagId: string }) {
     <div className="h-full overflow-y-auto">
       <div className="mx-auto w-full max-w-5xl px-8 py-10">
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold text-gray-900"># {tag.name}</h1>
+          <h1
+            className="text-2xl font-bold"
+            style={{ color: tagColor(tag.color).chipText }}
+          >
+            # {tag.name}
+          </h1>
+          <div className="flex items-center gap-1">
+            {TAG_COLORS.map((c) => (
+              <button
+                key={c.key ?? 'default'}
+                type="button"
+                aria-label={`標籤顏色 ${c.label}`}
+                title={c.label}
+                onClick={() => void setTagColor(tag.id, c.key)}
+                className={`h-4 w-4 rounded-full border ${
+                  (tag.color ?? null) === c.key ? 'ring-2 ring-offset-1 ring-gray-400' : ''
+                }`}
+                style={{ background: c.dot, borderColor: 'rgba(0,0,0,0.1)' }}
+              />
+            ))}
+          </div>
           <button
             type="button"
             onClick={() => {

@@ -15,13 +15,17 @@ export const tagRepository = {
     const trimmed = name.trim()
     const existing = await db.tags.where('name').equals(trimmed).first()
     if (existing) return existing
-    const tag: Tag = { id: crypto.randomUUID(), name: trimmed, properties: [] }
+    const tag: Tag = { id: crypto.randomUUID(), name: trimmed, properties: [], color: null }
     await db.tags.add(tag)
     return tag
   },
 
   async rename(id: string, name: string): Promise<void> {
     await db.tags.update(id, { name: name.trim() })
+  },
+
+  async setColor(id: string, color: string | null): Promise<void> {
+    await db.tags.update(id, { color })
   },
 
   /** 刪除標籤與所有卡片關聯 */

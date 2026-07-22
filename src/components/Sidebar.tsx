@@ -4,6 +4,7 @@ import { useJournalStore } from '../store/useJournalStore'
 import { useTagStore } from '../store/useTagStore'
 import { useAuthStore } from '../store/useAuthStore'
 import { syncConfigured } from '../sync/supabaseClient'
+import { tagColor } from './tagColors'
 
 function AccountRow() {
   const session = useAuthStore((s) => s.session)
@@ -147,11 +148,15 @@ export function Sidebar() {
                 <button
                   type="button"
                   onClick={() => openTag(tag.id)}
-                  className={`block w-full truncate rounded-md px-3 py-1 text-left text-sm text-gray-700 hover:bg-gray-200 ${
+                  className={`flex w-full items-center gap-1.5 truncate rounded-md px-3 py-1 text-left text-sm text-gray-700 hover:bg-gray-200 ${
                     view.type === 'tag' && view.tagId === tag.id ? 'bg-gray-200 font-medium' : ''
                   }`}
                 >
-                  # {tag.name}
+                  <span
+                    className="inline-block h-2 w-2 shrink-0 rounded-full"
+                    style={{ background: tagColor(tag.color).dot }}
+                  />
+                  <span className="truncate">{tag.name}</span>
                 </button>
               </li>
             ))}
