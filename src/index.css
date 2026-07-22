@@ -312,6 +312,84 @@
   opacity: 0.5;
 }
 
+/* ---- 節點工具列（便利貼/區域刪除、重新命名）---- */
+
+.node-delete-btn,
+.node-tool-btn {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.4rem;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.75rem;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.1);
+  cursor: pointer;
+}
+
+.node-delete-btn {
+  color: #dc2626;
+}
+
+.node-delete-btn:hover {
+  background: #fef2f2;
+}
+
+.node-tool-btn {
+  color: #4b5563;
+}
+
+.node-tool-btn:hover {
+  background: #f9fafb;
+}
+
+.section-toolbar {
+  display: flex;
+  gap: 0.3rem;
+}
+
+/* ---- 選字格式工具列（BubbleMenu）---- */
+
+.format-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  background: #1f2937;
+  border-radius: 0.5rem;
+  padding: 0.25rem;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+}
+
+.format-btn {
+  min-width: 1.75rem;
+  padding: 0.25rem 0.4rem;
+  border-radius: 0.35rem;
+  font-size: 0.8rem;
+  color: #e5e7eb;
+  cursor: pointer;
+}
+
+.format-btn:hover {
+  background: #374151;
+}
+
+.format-btn.is-active {
+  background: #3b82f6;
+  color: white;
+}
+
+.format-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 0.15rem 0.2rem;
+  background: #374151;
+}
+
+.format-hl {
+  background: #fde047;
+  color: #111827;
+  border-radius: 0.15rem;
+  padding: 0 0.15rem;
+}
+
 /* ---- 卡片顏色工具列 ---- */
 
 .card-color-toolbar {
