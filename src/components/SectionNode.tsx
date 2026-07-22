@@ -1,5 +1,12 @@
 import { memo } from 'react'
-import { NodeResizer, type Node, type NodeProps } from '@xyflow/react'
+import {
+  NodeResizer,
+  NodeToolbar,
+  Position,
+  useReactFlow,
+  type Node,
+  type NodeProps,
+} from '@xyflow/react'
 import { boardItemsRepository } from '../db/whiteboardRepository'
 
 export type SectionNodeType = Node<
@@ -18,8 +25,32 @@ export const SectionNode = memo(function SectionNode({
   data,
   selected,
 }: NodeProps<SectionNodeType>) {
+  const { deleteElements } = useReactFlow()
+
   return (
     <>
+      <NodeToolbar isVisible={selected} position={Position.Top} offset={6}>
+        <div className="section-toolbar">
+          <button
+            type="button"
+            onClick={() => {
+              const name = window.prompt('區域名稱', data.name)
+              if (name?.trim()) data.onRename(id, name.trim())
+            }}
+            className="node-tool-btn"
+          >
+            重新命名
+          </button>
+          <button
+            type="button"
+            aria-label="刪除區域"
+            onClick={() => void deleteElements({ nodes: [{ id }] })}
+            className="node-delete-btn"
+          >
+            🗑 刪除區域
+          </button>
+        </div>
+      </NodeToolbar>
       <NodeResizer
         isVisible={selected}
         minWidth={160}

@@ -51,6 +51,25 @@ if (!(await page.textContent('.tiptap table th'))?.includes('表頭一'))
   throw new Error('table block failed')
 log('M5: table block inserted and editable')
 
+// 選字格式工具列（粗體）
+await page.click('.tiptap p:has-text("這是內文。")', { clickCount: 3 })
+await page.waitForSelector('.format-bar')
+await page.click('.format-bar button[title="粗體"]')
+if (!(await page.$('.tiptap strong'))) throw new Error('bold via format bar failed')
+log('新: format bar bold works')
+
+// 標題可逐字輸入且不遺失（IME 修復的回歸保護）＋側邊欄同步
+await page.fill('input[placeholder="未命名卡片"]', '')
+await page.click('input[placeholder="未命名卡片"]')
+await page.keyboard.type('重新命名的標題')
+if ((await page.inputValue('input[placeholder="未命名卡片"]')) !== '重新命名的標題')
+  throw new Error('title typing lost characters')
+await page.waitForSelector('aside >> text=重新命名的標題')
+log('新: title types fully and syncs to sidebar (IME fix)')
+// 還原名稱，後續步驟仍以原名尋找
+await page.fill('input[placeholder="未命名卡片"]', '我的第一張卡片')
+await page.waitForSelector('aside >> text=我的第一張卡片')
+
 await page.waitForTimeout(800)
 await page.reload()
 await page.waitForSelector('text=我的第一張卡片')
@@ -139,6 +158,12 @@ await page.waitForSelector('.section-node')
 const persistedBg = await page.$eval('.card-node', (el) => getComputedStyle(el).backgroundColor)
 if (!persistedBg.includes('255, 251, 235')) throw new Error('color persistence failed')
 log('M5: sticky/section/color persist after reload')
+
+// 便利貼刪除按鈕（選取後工具列出現 🗑 刪除）
+await page.click('.sticky-node')
+await page.click('button[aria-label="刪除便利貼"]')
+await page.waitForSelector('.sticky-node', { state: 'detached' })
+log('新: sticky delete button removes the note')
 
 // ---- M3：日誌 + 雙向連結 ----
 await page.click('aside >> text=日誌')

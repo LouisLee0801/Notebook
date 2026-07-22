@@ -1,5 +1,12 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { NodeResizer, type Node, type NodeProps } from '@xyflow/react'
+import {
+  NodeResizer,
+  NodeToolbar,
+  Position,
+  useReactFlow,
+  type Node,
+  type NodeProps,
+} from '@xyflow/react'
 import { boardItemsRepository } from '../db/whiteboardRepository'
 
 export type StickyNodeType = Node<{ text: string }, 'sticky'>
@@ -14,6 +21,7 @@ export const StickyNode = memo(function StickyNode({
   const [text, setText] = useState(data.text)
   const textRef = useRef(text)
   textRef.current = text
+  const { deleteElements } = useReactFlow()
 
   // 取消選取（textarea 卸載）時也要存檔
   useEffect(() => {
@@ -25,6 +33,16 @@ export const StickyNode = memo(function StickyNode({
 
   return (
     <>
+      <NodeToolbar isVisible={selected} position={Position.Top} offset={6}>
+        <button
+          type="button"
+          aria-label="刪除便利貼"
+          onClick={() => void deleteElements({ nodes: [{ id }] })}
+          className="node-delete-btn"
+        >
+          🗑 刪除
+        </button>
+      </NodeToolbar>
       <NodeResizer
         isVisible={selected}
         minWidth={120}
