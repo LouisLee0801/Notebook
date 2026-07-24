@@ -17,6 +17,17 @@ create table if not exists public.cards (
   "updatedAt" bigint not null,
   "archivedAt" bigint,
   "deletedAt" bigint,
+  "folderId" text,
+  user_id uuid not null default auth.uid(),
+  client_id text
+);
+alter table public.cards add column if not exists "folderId" text;
+
+create table if not exists public.folders (
+  id text primary key,
+  name text not null default '',
+  "createdAt" bigint not null,
+  "updatedAt" bigint not null,
   user_id uuid not null default auth.uid(),
   client_id text
 );
@@ -125,7 +136,7 @@ declare t text;
 begin
   foreach t in array array[
     'cards','whiteboards','cardInstances','boardEdges','sections',
-    'boardNotes','tags','cardTags','cardLinks','journal'
+    'boardNotes','tags','cardTags','cardLinks','journal','folders'
   ] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('drop policy if exists "owner_all" on public.%I', t);
@@ -145,7 +156,7 @@ declare t text;
 begin
   foreach t in array array[
     'cards','whiteboards','cardInstances','boardEdges','sections',
-    'boardNotes','tags','cardTags','cardLinks','journal'
+    'boardNotes','tags','cardTags','cardLinks','journal','folders'
   ] loop
     begin
       execute format('alter publication supabase_realtime add table public.%I', t);

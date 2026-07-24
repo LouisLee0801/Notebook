@@ -24,14 +24,33 @@ function useDebouncedSave() {
   }
 }
 
-// 選字後跳出的格式工具列（features.md 模組 2：粗體/斜體/底線/刪除線/螢光/標題大小）
+// 文字顏色與螢光顏色調色盤（null = 清除）
+const TEXT_COLORS: { key: string | null; color: string }[] = [
+  { key: null, color: '#1f2937' },
+  { key: '#dc2626', color: '#dc2626' },
+  { key: '#ea580c', color: '#ea580c' },
+  { key: '#16a34a', color: '#16a34a' },
+  { key: '#2563eb', color: '#2563eb' },
+  { key: '#7c3aed', color: '#7c3aed' },
+]
+const HL_COLORS: { key: string | null; color: string }[] = [
+  { key: null, color: 'transparent' },
+  { key: '#fef08a', color: '#fef08a' },
+  { key: '#bbf7d0', color: '#bbf7d0' },
+  { key: '#bfdbfe', color: '#bfdbfe' },
+  { key: '#fbcfe8', color: '#fbcfe8' },
+  { key: '#fed7aa', color: '#fed7aa' },
+]
+
+// 選字後跳出的格式工具列（features.md 模組 2：粗體/斜體/底線/刪除線/文字色/螢光/標題大小）
 function FormatBar({ editor }: { editor: Editor }) {
   const [, force] = useReducer((x: number) => x + 1, 0)
+  // 只在選取變動時更新（避免每次 transaction 都重繪造成浮層抖動）
   useEffect(() => {
     const rerender = () => force()
-    editor.on('transaction', rerender)
+    editor.on('selectionUpdate', rerender)
     return () => {
-      editor.off('transaction', rerender)
+      editor.off('selectionUpdate', rerender)
     }
   }, [editor])
 
@@ -39,7 +58,9 @@ function FormatBar({ editor }: { editor: Editor }) {
     `format-btn${active ? ' is-active' : ''}`
 
   return (
-    <div className="format-bar">
+    // 按下工具列不要奪走編輯器選取（否則指令會作用在空選取上）
+    <div className="format-bar" onMouseDown={(e) => e.preventDefault()}>
+    <div className="format-row">
       <button
         type="button"
         className={btn(editor.isActive('paragraph') && !editor.isActive('heading'))}
@@ -108,6 +129,44 @@ function FormatBar({ editor }: { editor: Editor }) {
       >
         {'</>'}
       </button>
+    </div>
+    <div className="format-row">
+      <span className="format-label">字色</span>
+      {TEXT_COLORS.map((c) => (
+        <button
+          key={c.key ?? 'default'}
+          type="button"
+          aria-label={`文字顏色 ${c.key ?? '預設'}`}
+          title={c.key ?? '預設'}
+          className="format-swatch"
+          style={{ color: c.color }}
+          onClick={() =>
+            c.key
+              ? editor.chain().focus().setColor(c.key).run()
+              : editor.chain().focus().unsetColor().run()
+          }
+        >
+          A
+        </button>
+      ))}
+      <span className="format-sep" />
+      <span className="format-label">螢光</span>
+      {HL_COLORS.map((c) => (
+        <button
+          key={c.key ?? 'none'}
+          type="button"
+          aria-label={`螢光顏色 ${c.key ?? '清除'}`}
+          title={c.key ?? '清除'}
+          className={`format-swatch format-swatch-hl${c.key ? '' : ' is-none'}`}
+          style={{ background: c.color }}
+          onClick={() =>
+            c.key
+              ? editor.chain().focus().toggleHighlight({ color: c.key }).run()
+              : editor.chain().focus().unsetHighlight().run()
+          }
+        />
+      ))}
+    </div>
     </div>
   )
 }
@@ -181,7 +240,7 @@ export function CardEditor({
   return (
     <div className={hideTitle ? '' : 'flex h-full flex-col overflow-y-auto'}>
       {editor && (
-        <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }}>
+        <BubbleMenu editor={editor} tippyOptions={{ duration: 0 }}>
           <FormatBar editor={editor} />
         </BubbleMenu>
       )}

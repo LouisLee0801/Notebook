@@ -6,6 +6,7 @@ import type {
   CardInstance,
   CardLink,
   CardTag,
+  Folder,
   JournalEntry,
   Section,
   Tag,
@@ -25,6 +26,7 @@ export const db = new Dexie('notebook') as Dexie & {
   cardTags: Table<CardTag, [string, string]> // 複合主鍵 [cardId+tagId]
   sections: EntityTable<Section, 'id'>
   boardNotes: EntityTable<BoardNote, 'id'>
+  folders: EntityTable<Folder, 'id'>
   outbox: EntityTable<OutboxEntry, 'seq'>
 }
 
@@ -91,5 +93,20 @@ db.version(6).stores({
   cardTags: '[cardId+tagId], cardId, tagId',
   sections: 'id, whiteboardId',
   boardNotes: 'id, whiteboardId',
+  outbox: '++seq',
+})
+
+db.version(7).stores({
+  cards: 'id, updatedAt, createdAt, deletedAt, folderId',
+  whiteboards: 'id, updatedAt, name',
+  cardInstances: 'id, whiteboardId, cardId',
+  boardEdges: 'id, whiteboardId, fromInstanceId, toInstanceId',
+  cardLinks: '[fromCardId+toCardId], fromCardId, toCardId',
+  journal: 'date, cardId',
+  tags: 'id, name',
+  cardTags: '[cardId+tagId], cardId, tagId',
+  sections: 'id, whiteboardId',
+  boardNotes: 'id, whiteboardId',
+  folders: 'id, updatedAt, name',
   outbox: '++seq',
 })

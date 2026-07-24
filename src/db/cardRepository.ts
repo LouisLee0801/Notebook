@@ -19,15 +19,15 @@ export const cardRepository = {
     return db.cards.get(id)
   },
 
-  async create(now = Date.now()): Promise<Card> {
-    const card = createEmptyCard(now)
+  async create(now = Date.now(), folderId: string | null = null): Promise<Card> {
+    const card = { ...createEmptyCard(now), folderId }
     await db.cards.add(card)
     return card
   },
 
   async update(
     id: string,
-    patch: Partial<Pick<Card, 'title' | 'content' | 'archivedAt'>>,
+    patch: Partial<Pick<Card, 'title' | 'content' | 'archivedAt' | 'folderId'>>,
     now = Date.now(),
   ): Promise<void> {
     await db.cards.update(id, { ...patch, updatedAt: now })

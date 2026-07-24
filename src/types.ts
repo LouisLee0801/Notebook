@@ -10,6 +10,15 @@ export interface Card {
   updatedAt: number
   archivedAt: number | null
   deletedAt: number | null
+  folderId?: string | null // 所屬資料夾（#8），null = 未分類
+}
+
+// 卡片資料夾（#8）：卡片清單的分類容器
+export interface Folder {
+  id: string
+  name: string
+  createdAt: number
+  updatedAt: number
 }
 
 // 白板（docs/data-model.md）
@@ -110,5 +119,6 @@ export function createEmptyCard(now: number): Card {
     updatedAt: now,
     archivedAt: null,
     deletedAt: null,
+    folderId: null,
   }
 }

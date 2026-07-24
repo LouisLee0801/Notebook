@@ -9,6 +9,8 @@ import Table from '@tiptap/extension-table'
 import TableRow from '@tiptap/extension-table-row'
 import TableHeader from '@tiptap/extension-table-header'
 import TableCell from '@tiptap/extension-table-cell'
+import TextStyle from '@tiptap/extension-text-style'
+import Color from '@tiptap/extension-color'
 import type { AnyExtension } from '@tiptap/core'
 import { CardLinkNode } from './cardLink'
 
@@ -17,7 +19,9 @@ import { CardLinkNode } from './cardLink'
 export const baseExtensions: AnyExtension[] = [
   StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
   Underline,
-  Highlight,
+  Highlight.configure({ multicolor: true }), // 支援多色螢光標記
+  TextStyle, // 文字顏色的載體
+  Color, // 文字顏色
   Link.configure({ openOnClick: false }),
   TaskList,
   TaskItem.configure({ nested: true }),
