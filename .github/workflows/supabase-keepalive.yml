@@ -1,0 +1,46 @@
+name: Supabase Keepalive & Schema Check
+
+# 目的：
+# 1) 定期打 Supabase REST 一下，避免免費專案因閒置（約 7 天）被暫停。
+# 2) 順便檢查資料表/欄位是否齊全（tags.color、folders、cards.folderId）。
+# publishable key 屬公開金鑰（已內嵌在前端），放這裡安全；資料安全由資料庫端 RLS 把關。
+
+on:
+  schedule:
+    - cron: '0 6 */3 * *' # 每 3 天 06:00 UTC 跑一次
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: https://bbnqyhzhyfeajcbxvewz.supabase.co
+      SUPABASE_KEY: sb_publishable_oVq8rwnpTlE7zq0ryybZVg_4ghM8LaT
+    steps:
+      - name: Ping & verify schema
+        run: |
+          set -e
+          U="$SUPABASE_URL/rest/v1"
+          H1="apikey: $SUPABASE_KEY"
+          H2="Authorization: Bearer $SUPABASE_KEY"
+
+          echo "== 喚醒（keepalive）=="
+          code=$(curl -s -o /dev/null -w "%{http_code}" "$U/cards?select=id&limit=1" -H "$H1" -H "$H2")
+          echo "  cards ping HTTP $code"
+          if [ "$code" = "000" ]; then echo "  ⚠️ 連不到 Supabase（網路或 URL 問題）"; fi
+
+          echo "== 檢查資料表/欄位 =="
+          check () {
+            name="$1"; path="$2"
+            body=$(curl -s "$U/$path" -H "$H1" -H "$H2")
+            if echo "$body" | grep -qiE "does not exist|could not find|PGRST(202|204|205)|relation .* does not"; then
+              echo "  ❌ $name → 尚未建立，請在 Supabase SQL Editor 跑對應 SQL"
+              echo "       回應：$body"
+            else
+              echo "  ✅ $name → OK"
+            fi
+          }
+          check "tags.color（標籤顏色）"        "tags?select=color&limit=1"
+          check "folders 表（資料夾）"           "folders?select=id&limit=1"
+          check "cards.folderId（卡片所屬資料夾）" "cards?select=folderId&limit=1"
+          echo "== 完成 =="
