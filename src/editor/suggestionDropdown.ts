@@ -85,6 +85,8 @@ class DropdownView<T extends DropdownItem> {
       })
       this.el.appendChild(button)
     })
+    // 鍵盤上下移動時，讓被選取的項目捲進可視範圍
+    this.el.querySelector('.slash-menu-item.is-selected')?.scrollIntoView({ block: 'nearest' })
   }
 }
 

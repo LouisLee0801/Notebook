@@ -15,6 +15,7 @@ import { useCardStore } from '../store/useCardStore'
 import { useWhiteboardStore } from '../store/useWhiteboardStore'
 import { useTagStore } from '../store/useTagStore'
 import { useJournalStore } from '../store/useJournalStore'
+import { useFolderStore } from '../store/useFolderStore'
 
 interface TableSpec {
   name: string
@@ -34,6 +35,7 @@ const TABLES: TableSpec[] = [
   { name: 'cardTags', keys: ['cardId', 'tagId'] },
   { name: 'cardLinks', keys: ['fromCardId', 'toCardId'] },
   { name: 'journal', keys: ['date'] },
+  { name: 'folders', keys: ['id'], lww: 'updatedAt' },
 ]
 
 const specByName = new Map(TABLES.map((t) => [t.name, t]))
@@ -256,6 +258,7 @@ class SyncEngine {
       void useWhiteboardStore.getState().load()
       void useTagStore.getState().load()
       void useJournalStore.getState().load()
+      void useFolderStore.getState().load()
     }, 300)
   }
 }

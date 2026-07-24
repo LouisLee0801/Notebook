@@ -9,8 +9,9 @@ interface CardStore {
   loaded: boolean
   load: () => Promise<void>
   select: (id: string | null) => void
-  createCard: () => Promise<Card>
+  createCard: (folderId?: string | null) => Promise<Card>
   updateCard: (id: string, patch: Partial<Pick<Card, 'title' | 'content'>>) => Promise<void>
+  moveCardToFolder: (cardId: string, folderId: string | null) => Promise<void>
   deleteCard: (id: string) => Promise<void>
 }
 
@@ -26,8 +27,8 @@ export const useCardStore = create<CardStore>((set, get) => ({
 
   select: (id) => set({ selectedId: id }),
 
-  createCard: async () => {
-    const card = await cardRepository.create()
+  createCard: async (folderId = null) => {
+    const card = await cardRepository.create(Date.now(), folderId)
     set({ cards: [card, ...get().cards], selectedId: card.id })
     return card
   },
@@ -41,6 +42,16 @@ export const useCardStore = create<CardStore>((set, get) => ({
       .cards.map((c) => (c.id === id ? { ...c, ...patch, updatedAt: now } : c))
       .sort((a, b) => b.updatedAt - a.updatedAt)
     set({ cards })
+  },
+
+  moveCardToFolder: async (cardId, folderId) => {
+    await cardRepository.update(cardId, { folderId })
+    const now = Date.now()
+    set({
+      cards: get()
+        .cards.map((c) => (c.id === cardId ? { ...c, folderId, updatedAt: now } : c))
+        .sort((a, b) => b.updatedAt - a.updatedAt),
+    })
   },
 
   deleteCard: async (id) => {

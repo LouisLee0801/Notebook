@@ -13,6 +13,7 @@ import { useCardStore } from './store/useCardStore'
 import { useWhiteboardStore } from './store/useWhiteboardStore'
 import { useJournalStore } from './store/useJournalStore'
 import { useTagStore } from './store/useTagStore'
+import { useFolderStore } from './store/useFolderStore'
 
 export default function App() {
   const loadCards = useCardStore((s) => s.load)
@@ -22,6 +23,7 @@ export default function App() {
   const loadBoards = useWhiteboardStore((s) => s.load)
   const loadJournal = useJournalStore((s) => s.load)
   const loadTags = useTagStore((s) => s.load)
+  const loadFolders = useFolderStore((s) => s.load)
   const view = useWhiteboardStore((s) => s.view)
   const selected = cards.find((c) => c.id === selectedId) ?? null
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -40,7 +42,8 @@ export default function App() {
     void loadBoards()
     void loadJournal()
     void loadTags()
-  }, [loadCards, loadBoards, loadJournal, loadTags])
+    void loadFolders()
+  }, [loadCards, loadBoards, loadJournal, loadTags, loadFolders])
 
   // Cmd+K / Ctrl+K 快速開啟（features.md 模組 7，P0）
   useEffect(() => {

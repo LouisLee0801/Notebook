@@ -9,7 +9,9 @@ const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5173'
 const browser = await chromium.launch({ executablePath: CHROMIUM })
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
 const log = (m) => console.log('✓', m)
-page.on('dialog', (d) => d.accept())
+// confirm 一律 OK；prompt 回傳 nextPrompt（預設空字串，等同原本行為）
+let nextPrompt = ''
+page.on('dialog', (d) => d.accept(d.type() === 'prompt' ? nextPrompt : undefined))
 
 await page.goto(BASE_URL)
 // M0：已設定 Supabase → 首次載入出現登入頁；測試走離線路徑
@@ -57,6 +59,16 @@ await page.waitForSelector('.format-bar')
 await page.click('.format-bar button[title="粗體"]')
 if (!(await page.$('.tiptap strong'))) throw new Error('bold via format bar failed')
 log('新: format bar bold works')
+
+// 文字顏色（藍）：選較低的清單項目，避免浮層與標題/標籤列重疊
+await page.click('.tiptap ul li', { clickCount: 3 })
+await page.waitForSelector('.format-bar')
+await page.waitForTimeout(150)
+await page.click('.format-bar button[aria-label="文字顏色 #2563eb"]')
+await page.waitForTimeout(150)
+const coloredSpan = await page.$('.tiptap span[style*="color"]')
+if (!coloredSpan) throw new Error('text color not applied')
+log('新: text color applies')
 
 // 標題可逐字輸入且不遺失（IME 修復的回歸保護）＋側邊欄同步
 await page.fill('input[placeholder="未命名卡片"]', '')
@@ -286,6 +298,28 @@ await page.waitForSelector('main >> text=要刪的卡片')
 await page.click('button:has-text("永久刪除")')
 await page.waitForSelector('text=垃圾桶是空的')
 log('M4: permanent delete works')
+
+// ---- #8：卡片資料夾 ----
+await page.click('aside >> text=卡片庫')
+nextPrompt = '我的資料夾'
+await page.click('[aria-label="新增資料夾"]')
+await page.waitForSelector('aside >> text=我的資料夾')
+log('新: folder created (#8)')
+
+// 拖一張既有卡片到資料夾
+{
+  const dt = await page.evaluateHandle(() => new DataTransfer())
+  await page.dispatchEvent('aside button:has-text("我的第一張卡片")', 'dragstart', {
+    dataTransfer: dt,
+  })
+  await page.dispatchEvent('aside button:has-text("我的資料夾")', 'drop', { dataTransfer: dt })
+}
+await page.waitForFunction(() => {
+  const btns = [...document.querySelectorAll('aside button')]
+  const f = btns.find((b) => b.textContent?.includes('我的資料夾'))
+  return f && /我的資料夾\s*1/.test(f.textContent || '')
+})
+log('新: drag card into folder assigns it (#8)')
 
 // ---- 清理 ----
 await page.click('aside >> text=卡片庫')
