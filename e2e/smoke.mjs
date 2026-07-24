@@ -133,7 +133,13 @@ await page.waitForSelector('text=編輯卡片')
 await page.fill('input[placeholder="未命名卡片"]', '白板上的卡片')
 await page.waitForSelector('.card-node-title:has-text("白板上的卡片")')
 log('M2: dblclick creates card, drawer edit syncs to node')
-await page.click('[aria-label="關閉編輯"]')
+
+// 關閉時強制存檔：打字後「不等 debounce」立刻關閉，內容仍存入節點
+await page.click('.flex.w-96 .tiptap')
+await page.keyboard.type('關閉前最後一句')
+await page.click('[aria-label="關閉編輯"]') // 立即關閉（< 400ms debounce）
+await page.waitForSelector('.card-node-body:has-text("關閉前最後一句")')
+log('新: edit flushes on close (no data loss)')
 
 // 建第二個白板，從側邊欄拖同一張卡片上板（一卡多板）
 await page.click('[aria-label="新增白板"]')
