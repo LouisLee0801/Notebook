@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Card, Folder } from '../types'
 import { useCardStore } from '../store/useCardStore'
 import { useWhiteboardStore } from '../store/useWhiteboardStore'
 import { useJournalStore } from '../store/useJournalStore'
 import { useTagStore } from '../store/useTagStore'
 import { useFolderStore } from '../store/useFolderStore'
+import { useBoardNotesStore } from '../store/useBoardNotesStore'
 import { useAuthStore } from '../store/useAuthStore'
 import { syncConfigured } from '../sync/supabaseClient'
 import { tagColor } from './tagColors'
@@ -215,6 +216,9 @@ export function Sidebar() {
   const folders = useFolderStore((s) => s.folders)
   const createFolder = useFolderStore((s) => s.createFolder)
 
+  const notes = useBoardNotesStore((s) => s.notes)
+  const loadNotes = useBoardNotesStore((s) => s.load)
+
   const boards = useWhiteboardStore((s) => s.boards)
   const view = useWhiteboardStore((s) => s.view)
   const openLibrary = useWhiteboardStore((s) => s.openLibrary)
@@ -226,6 +230,11 @@ export function Sidebar() {
   const createBoard = useWhiteboardStore((s) => s.createBoard)
   const renameBoard = useWhiteboardStore((s) => s.renameBoard)
   const deleteBoard = useWhiteboardStore((s) => s.deleteBoard)
+
+  // 切換檢視時刷新便利貼總表（離開白板後即反映最新編輯）
+  useEffect(() => {
+    void loadNotes()
+  }, [view, loadNotes])
 
   const unfiled = cards.filter((c) => !c.folderId)
   const cardsOf = (folderId: string) => cards.filter((c) => c.folderId === folderId)
@@ -290,6 +299,35 @@ export function Sidebar() {
           </li>
         ))}
       </ul>
+
+      {/* 便利貼總表（#2）：跨白板列出，點擊開啟所在白板 */}
+      {notes.length > 0 && (
+        <>
+          <div className="flex items-center justify-between border-t border-gray-200 px-4 pt-3 pb-1">
+            <h2 className="text-xs font-semibold tracking-wide text-gray-500">便利貼</h2>
+          </div>
+          <ul className="max-h-32 overflow-y-auto px-2">
+            {notes.map((note) => {
+              const board = boards.find((b) => b.id === note.whiteboardId)
+              const preview = note.text.trim().split('\n')[0] || '（空白便利貼）'
+              return (
+                <li key={note.id}>
+                  <button
+                    type="button"
+                    onClick={() => openBoard(note.whiteboardId)}
+                    className="block w-full rounded-md px-3 py-1 text-left hover:bg-gray-200"
+                  >
+                    <span className="block truncate text-sm text-gray-700">📝 {preview}</span>
+                    {board && (
+                      <span className="block truncate text-[11px] text-gray-400">{board.name}</span>
+                    )}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
 
       {/* 標籤 */}
       {tags.length > 0 && (

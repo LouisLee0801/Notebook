@@ -16,6 +16,7 @@ import { useWhiteboardStore } from '../store/useWhiteboardStore'
 import { useTagStore } from '../store/useTagStore'
 import { useJournalStore } from '../store/useJournalStore'
 import { useFolderStore } from '../store/useFolderStore'
+import { useBoardNotesStore } from '../store/useBoardNotesStore'
 
 interface TableSpec {
   name: string
@@ -259,6 +260,7 @@ class SyncEngine {
       void useTagStore.getState().load()
       void useJournalStore.getState().load()
       void useFolderStore.getState().load()
+      void useBoardNotesStore.getState().load()
     }, 300)
   }
 }
