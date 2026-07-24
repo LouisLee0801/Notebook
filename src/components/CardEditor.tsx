@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { BubbleMenu, EditorContent, useEditor } from '@tiptap/react'
 import Placeholder from '@tiptap/extension-placeholder'
 import type { Content, Editor } from '@tiptap/core'
@@ -14,15 +14,37 @@ import { TagChips } from './TagChips'
 
 const SAVE_DEBOUNCE_MS = 400
 
-function useDebouncedSave() {
+// 回傳 [排程存檔, 立即補存]。卸載或分頁隱藏時可呼叫 flush 立即寫入未存的變更。
+function useDebouncedSave(): [(fn: () => void) => void, () => void] {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => () => {
-    if (timer.current) clearTimeout(timer.current)
+  const pending = useRef<(() => void) | null>(null)
+
+  const flush = useCallback(() => {
+    if (timer.current) {
+      clearTimeout(timer.current)
+      timer.current = null
+    }
+    if (pending.current) {
+      const fn = pending.current
+      pending.current = null
+      fn()
+    }
   }, [])
-  return (fn: () => void) => {
+
+  // 卸載（關閉抽屜、切換卡片/日期、離開日誌）時補存
+  useEffect(() => flush, [flush])
+
+  const schedule = useCallback((fn: () => void) => {
+    pending.current = fn
     if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(fn, SAVE_DEBOUNCE_MS)
-  }
+    timer.current = setTimeout(() => {
+      timer.current = null
+      pending.current = null
+      fn()
+    }, SAVE_DEBOUNCE_MS)
+  }, [])
+
+  return [schedule, flush]
 }
 
 // 文字顏色與螢光顏色調色盤（null = 清除）
@@ -227,8 +249,25 @@ export function CardEditor({
   hideTitle?: boolean
 }) {
   const updateCard = useCardStore((s) => s.updateCard)
-  const scheduleTitleSave = useDebouncedSave()
-  const scheduleContentSave = useDebouncedSave()
+  const [scheduleTitleSave, flushTitle] = useDebouncedSave()
+  const [scheduleContentSave, flushContent] = useDebouncedSave()
+
+  // 分頁關閉或切到背景時（手機切 App、關分頁）也把未存變更立即寫入
+  useEffect(() => {
+    const flushAll = () => {
+      flushTitle()
+      flushContent()
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flushAll()
+    }
+    window.addEventListener('pagehide', flushAll)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('pagehide', flushAll)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [flushTitle, flushContent])
 
   // 標題用本地狀態，避免每次輸入都被 store 回寫覆蓋 —— 那會中斷注音/拼音的組字。
   // 本元件在各處都以 key={card.id} 掛載，切換卡片會重新掛載並重新初始化，故不需額外同步。
