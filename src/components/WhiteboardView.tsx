@@ -19,6 +19,7 @@ import type { BoardEdge, BoardNote, CardInstance, Section } from '../types'
 import { boardItemsRepository } from '../db/whiteboardRepository'
 import { useCardStore } from '../store/useCardStore'
 import { useWhiteboardStore } from '../store/useWhiteboardStore'
+import { useBoardNotesStore } from '../store/useBoardNotesStore'
 import { CardNode, type CardNodeType } from './CardNode'
 import { SectionNode, type SectionNodeType } from './SectionNode'
 import { StickyNode, type StickyNodeType } from './StickyNode'
@@ -110,6 +111,9 @@ function Canvas({ boardId }: { boardId: string }) {
       width: section.width,
       height: section.height,
       zIndex: -1,
+      // 區域主體不攔截點擊（讓點擊穿透到裡面的卡片/便利貼與畫布）；
+      // 僅標題列可互動來選取/拖曳區域 —— 見 SectionNode 的 pointer-events 設定。
+      style: { pointerEvents: 'none' },
       data: {
         name: section.name,
         onRectChange: handleSectionRectChange,
@@ -145,7 +149,9 @@ function Canvas({ boardId }: { boardId: string }) {
           sectionsRef.current.delete(change.id)
           void boardItemsRepository.removeSection(change.id)
         } else if (node?.type === 'sticky') {
-          void boardItemsRepository.removeNote(change.id)
+          void boardItemsRepository.removeNote(change.id).then(() =>
+            useBoardNotesStore.getState().load(),
+          )
         } else {
           void boardItemsRepository.removeInstance(change.id)
           setEdges((eds) => eds.filter((e) => e.source !== change.id && e.target !== change.id))
@@ -301,6 +307,7 @@ function Canvas({ boardId }: { boardId: string }) {
     const pos = centerPos()
     const note = await boardItemsRepository.addNote(boardId, pos.x, pos.y)
     setNodes((nds) => [...nds, toStickyNode(note)])
+    void useBoardNotesStore.getState().load()
   }, [boardId, centerPos, setNodes])
 
   const handleAddSection = useCallback(async () => {

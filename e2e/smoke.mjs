@@ -181,9 +181,20 @@ await page.locator('textarea.sticky-node-input').blur()
 await page.waitForTimeout(300)
 log('M5: sticky note added, dragged and edited')
 
+// #2 便利貼左側總表：側邊欄出現便利貼區與內容
+await page.waitForSelector('aside >> text=便利貼')
+await page.waitForSelector('aside >> text=記得補充參考資料')
+log('新: sticky note listed in sidebar (#2)')
+
 await page.click('button:has-text("＋ 區域")')
 await page.waitForSelector('.section-node')
 log('M5: section added')
+
+// #1 區域存在時卡片仍可點選，且有「從白板移除」鈕（區域主體不再攔截點擊）
+await page.click('.card-node')
+await page.waitForSelector('.react-flow__node-card.selected')
+await page.waitForSelector('[aria-label="從白板移除此卡片"]')
+log('新: card selectable with a section present + board-remove button (#1)')
 
 await page.click('.card-node')
 await page.waitForSelector('.card-color-toolbar')

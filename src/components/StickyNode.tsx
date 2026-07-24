@@ -8,6 +8,7 @@ import {
   type NodeProps,
 } from '@xyflow/react'
 import { boardItemsRepository } from '../db/whiteboardRepository'
+import { useBoardNotesStore } from '../store/useBoardNotesStore'
 
 export type StickyNodeType = Node<{ text: string }, 'sticky'>
 
@@ -27,7 +28,9 @@ export const StickyNode = memo(function StickyNode({
   useEffect(() => {
     if (!selected) return
     return () => {
-      void boardItemsRepository.updateNote(id, { text: textRef.current })
+      void boardItemsRepository
+        .updateNote(id, { text: textRef.current })
+        .then(() => useBoardNotesStore.getState().load())
     }
   }, [selected, id])
 
@@ -65,7 +68,11 @@ export const StickyNode = memo(function StickyNode({
           value={text}
           placeholder="便利貼…"
           onChange={(e) => setText(e.target.value)}
-          onBlur={() => void boardItemsRepository.updateNote(id, { text })}
+          onBlur={() =>
+            void boardItemsRepository
+              .updateNote(id, { text })
+              .then(() => useBoardNotesStore.getState().load())
+          }
         />
       ) : (
         <div className="sticky-node sticky-node-view">

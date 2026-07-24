@@ -27,7 +27,7 @@ export const CARD_COLORS: { key: string | null; label: string; bg: string; borde
 
 export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps<CardNodeType>) {
   const card = useCardStore((s) => s.cards.find((c) => c.id === data.cardId))
-  const { updateNodeData } = useReactFlow()
+  const { updateNodeData, deleteElements } = useReactFlow()
 
   const html = useMemo(() => {
     if (!card) return ''
@@ -58,6 +58,16 @@ export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps
               className={`card-color-swatch ${data.color === c.key ? 'is-active' : ''}`}
             />
           ))}
+          <span className="card-toolbar-sep" />
+          <button
+            type="button"
+            aria-label="從白板移除此卡片"
+            title="從白板移除（不刪卡片）"
+            onClick={() => void deleteElements({ nodes: [{ id }] })}
+            className="card-toolbar-remove"
+          >
+            🗑
+          </button>
         </div>
       </NodeToolbar>
       <NodeResizer

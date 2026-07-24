@@ -141,6 +141,11 @@ export const boardItemsRepository = {
 
   // ---- 便利貼 ----
 
+  /** 跨白板列出所有便利貼（側邊欄總表用） */
+  async listAllNotes(): Promise<BoardNote[]> {
+    return db.boardNotes.toArray()
+  },
+
   async addNote(whiteboardId: string, x: number, y: number): Promise<BoardNote> {
     const note: BoardNote = {
       id: crypto.randomUUID(),

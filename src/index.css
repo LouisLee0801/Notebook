@@ -315,7 +315,14 @@
   font-size: 0.75rem;
   font-weight: 600;
   color: #6d28d9;
-  cursor: default;
+  cursor: grab;
+  /* 區域主體 pointer-events:none，僅標題列可互動（選取/拖曳區域） */
+  pointer-events: auto;
+}
+
+/* 區域選取後的縮放控制點需可互動（主體為 pointer-events:none） */
+.react-flow__node-section .react-flow__resize-control {
+  pointer-events: all;
 }
 
 /* ---- 便利貼 ---- */
@@ -502,6 +509,23 @@
 .card-color-swatch.is-active {
   outline: 2px solid #3b82f6;
   outline-offset: 1px;
+}
+
+.card-toolbar-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 0 0.15rem;
+  background: #e5e7eb;
+}
+
+.card-toolbar-remove {
+  font-size: 0.85rem;
+  padding: 0 0.15rem;
+  cursor: pointer;
+}
+
+.card-toolbar-remove:hover {
+  filter: brightness(0.85);
 }
 
 /* ---- Slash 指令選單 ---- */
