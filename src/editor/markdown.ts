@@ -83,6 +83,8 @@ function renderBlock(node: ContentNode): string {
       return '---'
     case 'image':
       return `![圖片](${String(node.attrs?.src ?? '')})`
+    case 'fileAttachment':
+      return `[📎 ${String(node.attrs?.name ?? '檔案')}](${String(node.attrs?.src ?? '')})`
     case 'table': {
       const rows = node.content ?? []
       const lines: string[] = []

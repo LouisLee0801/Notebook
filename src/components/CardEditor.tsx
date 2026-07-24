@@ -4,7 +4,8 @@ import Placeholder from '@tiptap/extension-placeholder'
 import type { Content, Editor } from '@tiptap/core'
 import type { Card } from '../types'
 import { useCardStore } from '../store/useCardStore'
-import { baseExtensions, fileToDataUrl } from '../editor/extensions'
+import { cardRepository } from '../db/cardRepository'
+import { baseExtensions, fileToAttachment, fileToDataUrl } from '../editor/extensions'
 import { SlashMenu } from '../editor/slashMenu'
 import { CardLinkSuggestion } from '../editor/cardLink'
 import { cardToMarkdown, downloadMarkdown } from '../editor/markdown'
@@ -129,6 +130,51 @@ function FormatBar({ editor }: { editor: Editor }) {
       >
         {'</>'}
       </button>
+      <span className="format-sep" />
+      <button
+        type="button"
+        className="format-btn"
+        title="加入網址連結"
+        onClick={() => {
+          const prev = editor.getAttributes('link').href as string | undefined
+          const url = window.prompt('連結網址（留空移除）', prev ?? 'https://')
+          if (url === null) return
+          if (url.trim() === '') editor.chain().focus().unsetLink().run()
+          else editor.chain().focus().setLink({ href: url.trim() }).run()
+        }}
+      >
+        🔗
+      </button>
+      <button
+        type="button"
+        className="format-btn format-btn-wide"
+        title="把選取文字抽成一張新卡片並連結"
+        onClick={() => {
+          const { from, to } = editor.state.selection
+          const text = editor.state.doc.textBetween(from, to, ' ').trim()
+          if (!text) return
+          void (async () => {
+            // 直接用 repository 建卡（不改變目前選取，避免主編輯器畫面跳走）
+            const card = await cardRepository.create()
+            await cardRepository.update(card.id, {
+              title: text,
+              content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] },
+            })
+            await useCardStore.getState().load()
+            editor
+              .chain()
+              .focus()
+              .deleteRange({ from, to })
+              .insertContent([
+                { type: 'cardLink', attrs: { cardId: card.id, label: text } },
+                { type: 'text', text: ' ' },
+              ])
+              .run()
+          })()
+        }}
+      >
+        抽成卡片
+      </button>
     </div>
     <div className="format-row">
       <span className="format-label">字色</span>
@@ -220,16 +266,26 @@ export function CardEditor({
           return true
         },
         handleDrop: (view, event) => {
-          const file = Array.from(event.dataTransfer?.files ?? []).find((f) =>
-            f.type.startsWith('image/'),
-          )
+          const file = Array.from(event.dataTransfer?.files ?? [])[0]
           if (!file) return false
-          void fileToDataUrl(file).then((src) => {
-            const pos =
-              view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ??
-              view.state.selection.to
-            view.dispatch(view.state.tr.insert(pos, view.state.schema.nodes.image.create({ src })))
-          })
+          const posAt = () =>
+            view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ??
+            view.state.selection.to
+          if (file.type.startsWith('image/')) {
+            void fileToDataUrl(file).then((src) => {
+              view.dispatch(view.state.tr.insert(posAt(), view.state.schema.nodes.image.create({ src })))
+            })
+          } else {
+            void fileToAttachment(file).then((attrs) => {
+              if (!attrs) {
+                window.alert('檔案超過 5MB 上限，暫不支援（避免拖慢同步）。')
+                return
+              }
+              view.dispatch(
+                view.state.tr.insert(posAt(), view.state.schema.nodes.fileAttachment.create(attrs)),
+              )
+            })
+          }
           return true
         },
       },
@@ -240,7 +296,7 @@ export function CardEditor({
   return (
     <div className={hideTitle ? '' : 'flex h-full flex-col overflow-y-auto'}>
       {editor && (
-        <BubbleMenu editor={editor} tippyOptions={{ duration: 0 }}>
+        <BubbleMenu editor={editor} tippyOptions={{ duration: 0, maxWidth: 'none' }}>
           <FormatBar editor={editor} />
         </BubbleMenu>
       )}

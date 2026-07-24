@@ -70,6 +70,36 @@ const coloredSpan = await page.$('.tiptap span[style*="color"]')
 if (!coloredSpan) throw new Error('text color not applied')
 log('新: text color applies')
 
+// #6 抽成卡片：新增一段，選取後抽成一張新卡片並連結
+await page.click('.tiptap')
+await page.keyboard.press('Control+End')
+await page.keyboard.press('Enter')
+await page.keyboard.type('關鍵概念X')
+await page.click('.tiptap p:has-text("關鍵概念X")', { clickCount: 3 })
+await page.waitForSelector('.format-bar')
+await page.click('.format-bar button[title="把選取文字抽成一張新卡片並連結"]')
+await page.waitForSelector('.tiptap .card-link:has-text("關鍵概念X")')
+await page.waitForSelector('aside:has-text("關鍵概念X")')
+log('新: turn selection into a linked card (#6)')
+
+// #7 檔案附件：用 /檔案 指令挑一個小檔案插入
+{
+  const [fc] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    (async () => {
+      await page.click('.tiptap')
+      await page.keyboard.press('Control+End')
+      await page.keyboard.press('Enter')
+      await page.keyboard.type('/檔案')
+      await page.waitForSelector('.slash-menu-item')
+      await page.keyboard.press('Enter')
+    })(),
+  ])
+  await fc.setFiles({ name: '筆記.txt', mimeType: 'text/plain', buffer: Buffer.from('hello attachment') })
+  await page.waitForSelector('.tiptap a.file-attach:has-text("筆記.txt")')
+}
+log('新: file attachment inserted (#7)')
+
 // 標題可逐字輸入且不遺失（IME 修復的回歸保護）＋側邊欄同步
 await page.fill('input[placeholder="未命名卡片"]', '')
 await page.click('input[placeholder="未命名卡片"]')
