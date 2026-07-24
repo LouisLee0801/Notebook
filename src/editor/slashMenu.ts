@@ -93,6 +93,29 @@ const COMMANDS: SlashCommand[] = [
       input.click()
     },
   },
+  {
+    title: '檔案附件',
+    keywords: 'file attachment 檔案 附件 pdf 上傳 upload',
+    run: (editor, range) => {
+      editor.chain().focus().deleteRange(range).run()
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.onchange = () => {
+        const file = input.files?.[0]
+        if (!file) return
+        void import('./extensions').then(({ fileToAttachment }) =>
+          fileToAttachment(file).then((attrs) => {
+            if (!attrs) {
+              window.alert('檔案超過 5MB 上限，暫不支援（避免拖慢同步）。')
+              return
+            }
+            editor.chain().focus().insertContent({ type: 'fileAttachment', attrs }).run()
+          }),
+        )
+      }
+      input.click()
+    },
+  },
 ]
 
 export const SlashMenu = Extension.create({

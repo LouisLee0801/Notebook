@@ -13,6 +13,7 @@ import TextStyle from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import type { AnyExtension } from '@tiptap/core'
 import { CardLinkNode } from './cardLink'
+import { FileAttachment, MAX_ATTACHMENT_BYTES, type AttachmentAttrs } from './fileAttachment'
 
 // 編輯器與唯讀渲染（白板卡片節點）共用的 schema，
 // 兩邊不一致會導致 generateHTML 解析失敗，務必同步維護。
@@ -31,7 +32,15 @@ export const baseExtensions: AnyExtension[] = [
   TableHeader,
   TableCell,
   CardLinkNode,
+  FileAttachment,
 ]
+
+/** 讀取任意檔案為附件屬性（data URL）；超過上限回傳 null */
+export async function fileToAttachment(file: File): Promise<AttachmentAttrs | null> {
+  if (file.size > MAX_ATTACHMENT_BYTES) return null
+  const src = await fileToDataUrl(file)
+  return { src, name: file.name, size: file.size }
+}
 
 /** 讀取圖片檔為 data URL（貼上/拖曳/挑選共用） */
 export function fileToDataUrl(file: File): Promise<string> {

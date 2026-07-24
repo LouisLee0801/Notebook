@@ -94,6 +94,32 @@
   border-radius: 0.4rem;
 }
 
+.tiptap a.file-attach,
+.file-attach {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  padding: 0.35rem 0.6rem;
+  margin: 0.15rem 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 0.85rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.tiptap a.file-attach:hover,
+.file-attach:hover {
+  background: #f3f4f6;
+}
+
+.tiptap a.file-attach.ProseMirror-selectednode {
+  outline: 2px solid #60a5fa;
+}
+
 .tiptap img.ProseMirror-selectednode {
   outline: 2px solid #60a5fa;
 }
@@ -437,6 +463,12 @@
   align-self: stretch;
   margin: 0.15rem 0.2rem;
   background: #374151;
+}
+
+.format-btn-wide {
+  min-width: auto;
+  padding: 0.25rem 0.5rem;
+  white-space: nowrap;
 }
 
 .format-hl {
