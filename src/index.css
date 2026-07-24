@@ -178,6 +178,19 @@
   min-height: 3.5rem;
 }
 
+/* 點日期捲動到該天時的短暫高亮 */
+.journal-flash {
+  animation: journal-flash 1.2s ease-out;
+}
+@keyframes journal-flash {
+  0% {
+    background: rgb(59 130 246 / 0.12);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
 /* ---- 白板卡片節點 ---- */
 
 .card-node {

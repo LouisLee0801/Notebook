@@ -182,6 +182,31 @@ await page.click('aside >> text=日誌')
 await page.waitForSelector('text=今天')
 log('M3: journal opens with today entry')
 
+// #5 Journey：頂部日期導覽（本週＋下週），點日期建立/開啟該天
+await page.waitForSelector('text=本週與下週')
+{
+  const firstDay = page.locator('.grid.grid-cols-7 button[aria-label]').first()
+  const picked = await firstDay.getAttribute('aria-label')
+  await firstDay.click()
+  // 點選後該日期格變成選中樣式（深底白字）
+  await page.waitForSelector(`.grid.grid-cols-7 button[aria-label="${picked}"].bg-gray-900`)
+  // 該天的日誌區段標題出現（YYYY年M月D日）
+  const [, m, d] = picked.split('-')
+  await page.waitForSelector(`text=${Number(m)}月${Number(d)}日`)
+}
+log('新: journey calendar picks a date and creates its entry (#5)')
+
+// 展開月曆、收合兩週
+await page.click('text=展開月曆 ▾')
+await page.waitForSelector('text=收合兩週 ▴')
+await page.click('text=收合兩週 ▴')
+await page.waitForSelector('text=本週與下週')
+log('新: journey calendar toggles month/weeks (#5)')
+
+// 回到今天，讓後續連結測試作用在今天的日誌
+await page.click('text=今天')
+await page.waitForSelector('text=今天')
+
 await page.click('.journal-editor .tiptap')
 await page.keyboard.type('參考 [[我的第一')
 await page.waitForSelector('.slash-menu-item')
