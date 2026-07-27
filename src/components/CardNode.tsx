@@ -10,10 +10,14 @@ import {
 } from '@xyflow/react'
 import { generateHTML, type JSONContent } from '@tiptap/core'
 import { baseExtensions } from '../editor/extensions'
+import { titleHtmlOrNull } from '../editor/titleFormat'
 import { useCardStore } from '../store/useCardStore'
 import { boardItemsRepository } from '../db/whiteboardRepository'
 
-export type CardNodeType = Node<{ cardId: string; color: string | null }, 'card'>
+export type CardNodeType = Node<
+  { cardId: string; color: string | null; autoHeight?: boolean },
+  'card'
+>
 
 // 折疊狀態屬於「白板上的檢視偏好」，用 localStorage 存（不進雲端同步）
 const COLLAPSE_KEY = 'notebook-card-collapsed'
@@ -107,18 +111,22 @@ export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps
         minHeight={60}
         lineClassName="!border-blue-400"
         handleClassName="!bg-blue-400"
-        onResizeEnd={(_, params) =>
+        onResizeEnd={(_, params) => {
+          // 手動調過大小後就以固定高度顯示（內文改為填滿並可捲動，不再套用自動高度上限）
+          updateNodeData(id, { autoHeight: false })
           void boardItemsRepository.resizeInstance(id, {
             x: params.x,
             y: params.y,
             width: params.width,
             height: params.height,
           })
-        }
+        }}
       />
       <Handle type="target" position={Position.Left} className="card-node-handle" />
       <div
-        className={`card-node ${collapsed ? 'is-collapsed' : ''} ${selected ? 'is-selected' : ''}`}
+        className={`card-node ${collapsed ? 'is-collapsed' : ''} ${
+          data.autoHeight ? 'is-autosize' : ''
+        } ${selected ? 'is-selected' : ''}`}
         style={{ background: color.bg, borderColor: selected ? undefined : color.border }}
       >
         <div className="card-node-header">
@@ -134,9 +142,20 @@ export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps
           >
             {collapsed ? '▸' : '▾'}
           </button>
-          <div className="card-node-title">
-            {card ? card.title || '未命名卡片' : '已刪除的卡片'}
-          </div>
+          {(() => {
+            if (!card) return <div className="card-node-title">已刪除的卡片</div>
+            const titleHtml = titleHtmlOrNull(card.id, card.title)
+            if (titleHtml) {
+              // 標題 HTML 由標題編輯器輸出、經 schema 正規化，非外部來源
+              return (
+                <div
+                  className="card-node-title"
+                  dangerouslySetInnerHTML={{ __html: titleHtml }}
+                />
+              )
+            }
+            return <div className="card-node-title">{card.title || '未命名卡片'}</div>
+          })()}
         </div>
         {!collapsed && html && (
           /* 內容為使用者自己在編輯器輸入、經 schema 正規化的 JSON，非外部來源。

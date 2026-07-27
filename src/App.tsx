@@ -5,6 +5,7 @@ import { WhiteboardView } from './components/WhiteboardView'
 import { JournalView } from './components/JournalView'
 import { TagView } from './components/TagView'
 import { TrashView } from './components/TrashView'
+import { AccountView } from './components/AccountView'
 import { CommandPalette } from './components/CommandPalette'
 import { LoginView } from './components/LoginView'
 import { syncConfigured } from './sync/supabaseClient'
@@ -75,6 +76,8 @@ export default function App() {
           <TagView tagId={view.tagId} />
         ) : view.type === 'trash' ? (
           <TrashView />
+        ) : view.type === 'account' ? (
+          <AccountView />
         ) : !cardsLoaded ? null : selected ? (
           <CardEditor key={selected.id} card={selected} />
         ) : (

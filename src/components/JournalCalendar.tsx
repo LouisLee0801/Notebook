@@ -54,8 +54,8 @@ export function JournalCalendar({
     const isSelected = str === selected
     const hasEntry = entryDates.has(str)
     const holiday = taiwanHoliday(str)
-    // 假日（含週日）在未選取/非今天時以紅色標示（#13）
-    const holidayText = (holiday || day.getDay() === 0) && !isSelected && !isToday
+    // 國定假日以橘色標示（#4）
+    const holidayText = holiday && !isSelected && !isToday
     return (
       <button
         key={str}
@@ -70,19 +70,20 @@ export function JournalCalendar({
               ? 'bg-amber-100 text-amber-800'
               : holidayText
                 ? dimmed
-                  ? 'text-red-300 hover:bg-gray-100'
-                  : 'text-red-500 hover:bg-red-50'
+                  ? 'font-medium text-orange-300 hover:bg-orange-50'
+                  : 'font-medium text-orange-500 hover:bg-orange-50'
                 : dimmed
                   ? 'text-gray-300 hover:bg-gray-100'
                   : 'text-gray-700 hover:bg-gray-100'
         }`}
       >
         {day.getDate()}
+        {/* 假日：底部橘點；有日誌內容：底部藍點（兩者可並存，左右錯開） */}
         {holiday && !isSelected && (
-          <span className="absolute top-0.5 right-1 h-1 w-1 rounded-full bg-red-400" />
+          <span className="absolute bottom-1 left-1/2 -translate-x-3 h-1 w-1 rounded-full bg-orange-400" />
         )}
         {hasEntry && !isSelected && (
-          <span className="absolute bottom-1 h-1 w-1 rounded-full bg-blue-400" />
+          <span className="absolute bottom-1 left-1/2 translate-x-2 h-1 w-1 rounded-full bg-blue-400" />
         )}
       </button>
     )

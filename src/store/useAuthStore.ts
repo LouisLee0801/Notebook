@@ -15,6 +15,7 @@ interface AuthStore {
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
+  changePassword: (newPassword: string) => Promise<{ ok: boolean; message: string }>
   skip: () => void
   unskip: () => void
 }
@@ -61,6 +62,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   signOut: async () => {
     await supabase.auth.signOut()
+  },
+
+  changePassword: async (newPassword) => {
+    if (newPassword.length < 6) return { ok: false, message: '密碼至少需要 6 個字元' }
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) return { ok: false, message: error.message }
+    return { ok: true, message: '密碼已更新' }
   },
 
   skip: () => {
