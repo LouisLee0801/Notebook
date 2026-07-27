@@ -181,11 +181,13 @@ await page.waitForSelector('.sticky-node')
   await page.mouse.move(box.x - 260, box.y + 200, { steps: 8 })
   await page.mouse.up()
 }
-await page.click('.sticky-node') // 選取後才進入編輯
-await page.fill('textarea.sticky-node-input', '記得補充參考資料')
-await page.locator('textarea.sticky-node-input').blur()
-await page.waitForTimeout(300)
-log('M5: sticky note added, dragged and edited')
+await page.click('.sticky-node') // 選取後才進入編輯（富文字，#10）
+await page.click('.sticky-node .tiptap')
+await page.keyboard.insertText('記得補充參考資料')
+await page.waitForTimeout(150)
+await page.click('.react-flow__pane', { position: { x: 6, y: 6 } }) // 點空白：失焦存檔＋收合工具列
+await page.waitForTimeout(400)
+log('M5: sticky note added, dragged and edited (rich text)')
 
 // #2 便利貼左側總表：側邊欄出現便利貼區與內容
 await page.waitForSelector('aside >> text=便利貼')
@@ -209,6 +211,13 @@ await page.waitForTimeout(300)
 const cardBg = await page.$eval('.card-node', (el) => getComputedStyle(el).backgroundColor)
 if (!cardBg.includes('255, 251, 235')) throw new Error('card color failed: ' + cardBg)
 log('M5: card color applied from toolbar')
+
+// #1 卡片折疊：只露出標題（收合後內文消失），再展開
+await page.click('.card-node-collapse')
+await page.waitForSelector('.card-node.is-collapsed')
+await page.click('.card-node-collapse')
+await page.waitForSelector('.card-node:not(.is-collapsed)')
+log('新: card collapse toggles body (#1)')
 
 await page.reload()
 await page.click('aside >> text=白板 1')
@@ -240,8 +249,10 @@ await page.waitForSelector('text=本週與下週')
   // 該天的日誌區段標題出現（YYYY年M月D日）
   const [, m, d] = picked.split('-')
   await page.waitForSelector(`text=${Number(m)}月${Number(d)}日`)
+  // #11 空白日不再卡在「載入中」，而是顯示可開始撰寫的提示
+  await page.waitForSelector('text=這天還沒有日誌')
 }
-log('新: journey calendar picks a date and creates its entry (#5)')
+log('新: journey picks a date; empty day shows prompt, not endless loading (#5,#11)')
 
 // 展開月曆、收合兩週
 await page.click('text=展開月曆 ▾')

@@ -7,10 +7,23 @@ import { useTagStore } from '../store/useTagStore'
 import { useFolderStore } from '../store/useFolderStore'
 import { useBoardNotesStore } from '../store/useBoardNotesStore'
 import { useAuthStore } from '../store/useAuthStore'
+import { boardItemsRepository } from '../db/whiteboardRepository'
 import { syncConfigured } from '../sync/supabaseClient'
 import { tagColor } from './tagColors'
 
 const CARD_DND = 'application/x-notebook-card'
+
+// 便利貼內文現以 HTML 儲存；側邊欄預覽需去掉標籤只留純文字
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
 function AccountRow() {
   const session = useAuthStore((s) => s.session)
@@ -227,6 +240,7 @@ export function Sidebar() {
   const openTag = useWhiteboardStore((s) => s.openTag)
   const openTrash = useWhiteboardStore((s) => s.openTrash)
   const tags = useTagStore((s) => s.tags)
+  const deleteTag = useTagStore((s) => s.deleteTag)
   const createBoard = useWhiteboardStore((s) => s.createBoard)
   const renameBoard = useWhiteboardStore((s) => s.renameBoard)
   const deleteBoard = useWhiteboardStore((s) => s.deleteBoard)
@@ -309,18 +323,29 @@ export function Sidebar() {
           <ul className="max-h-32 overflow-y-auto px-2">
             {notes.map((note) => {
               const board = boards.find((b) => b.id === note.whiteboardId)
-              const preview = note.text.trim().split('\n')[0] || '（空白便利貼）'
+              const preview = stripHtml(note.text) || '（空白便利貼）'
               return (
-                <li key={note.id}>
+                <li key={note.id} className="group relative">
                   <button
                     type="button"
                     onClick={() => openBoard(note.whiteboardId)}
-                    className="block w-full rounded-md px-3 py-1 text-left hover:bg-gray-200"
+                    className="block w-full rounded-md px-3 py-1 pr-7 text-left hover:bg-gray-200"
                   >
                     <span className="block truncate text-sm text-gray-700">📝 {preview}</span>
                     {board && (
                       <span className="block truncate text-[11px] text-gray-400">{board.name}</span>
                     )}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="從清單刪除便利貼"
+                    onClick={() => {
+                      if (window.confirm('要刪除這張便利貼嗎？'))
+                        void boardItemsRepository.removeNote(note.id).then(() => void loadNotes())
+                    }}
+                    className="absolute top-1.5 right-1.5 hidden rounded px-1.5 text-xs text-gray-400 hover:bg-gray-300 hover:text-red-500 group-hover:block"
+                  >
+                    ✕
                   </button>
                 </li>
               )
@@ -337,11 +362,11 @@ export function Sidebar() {
           </div>
           <ul className="max-h-28 overflow-y-auto px-2">
             {tags.map((tag) => (
-              <li key={tag.id}>
+              <li key={tag.id} className="group relative">
                 <button
                   type="button"
                   onClick={() => openTag(tag.id)}
-                  className={`flex w-full items-center gap-1.5 truncate rounded-md px-3 py-1 text-left text-sm text-gray-700 hover:bg-gray-200 ${
+                  className={`flex w-full items-center gap-1.5 truncate rounded-md px-3 py-1 pr-7 text-left text-sm text-gray-700 hover:bg-gray-200 ${
                     view.type === 'tag' && view.tagId === tag.id ? 'bg-gray-200 font-medium' : ''
                   }`}
                 >
@@ -350,6 +375,17 @@ export function Sidebar() {
                     style={{ background: tagColor(tag.color).dot }}
                   />
                   <span className="truncate">{tag.name}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-label={`刪除標籤 ${tag.name}`}
+                  onClick={() => {
+                    if (window.confirm(`刪除標籤「${tag.name}」？會從所有卡片移除此標籤。`))
+                      void deleteTag(tag.id)
+                  }}
+                  className="absolute top-1 right-1.5 hidden rounded px-1.5 text-xs text-gray-400 hover:bg-gray-300 hover:text-red-500 group-hover:block"
+                >
+                  ✕
                 </button>
               </li>
             ))}

@@ -349,7 +349,7 @@ export function CardEditor({
             <div className="flex items-start gap-2">
               <input
                 className={`w-full min-w-0 flex-1 bg-transparent font-bold outline-none placeholder:text-gray-300 ${
-                  compact ? 'text-xl' : 'text-3xl'
+                  compact ? 'text-2xl' : 'text-3xl'
                 }`}
                 placeholder="未命名卡片"
                 value={title}

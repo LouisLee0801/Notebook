@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { taiwanHoliday } from '../util/taiwanHolidays'
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
 
@@ -52,23 +53,34 @@ export function JournalCalendar({
     const isToday = sameYMD(day, today)
     const isSelected = str === selected
     const hasEntry = entryDates.has(str)
+    const holiday = taiwanHoliday(str)
+    // 假日（含週日）在未選取/非今天時以紅色標示（#13）
+    const holidayText = (holiday || day.getDay() === 0) && !isSelected && !isToday
     return (
       <button
         key={str}
         type="button"
         onClick={() => onPick(str)}
-        aria-label={str}
+        aria-label={holiday ? `${str} ${holiday}` : str}
+        title={holiday ?? undefined}
         className={`relative flex h-9 flex-col items-center justify-center rounded-md text-sm transition ${
           isSelected
             ? 'bg-gray-900 font-semibold text-white'
             : isToday
               ? 'bg-amber-100 text-amber-800'
-              : dimmed
-                ? 'text-gray-300 hover:bg-gray-100'
-                : 'text-gray-700 hover:bg-gray-100'
+              : holidayText
+                ? dimmed
+                  ? 'text-red-300 hover:bg-gray-100'
+                  : 'text-red-500 hover:bg-red-50'
+                : dimmed
+                  ? 'text-gray-300 hover:bg-gray-100'
+                  : 'text-gray-700 hover:bg-gray-100'
         }`}
       >
         {day.getDate()}
+        {holiday && !isSelected && (
+          <span className="absolute top-0.5 right-1 h-1 w-1 rounded-full bg-red-400" />
+        )}
         {hasEntry && !isSelected && (
           <span className="absolute bottom-1 h-1 w-1 rounded-full bg-blue-400" />
         )}

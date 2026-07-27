@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Background,
+  ConnectionMode,
   MarkerType,
   MiniMap,
   ReactFlow,
@@ -11,6 +12,7 @@ import {
   type Connection,
   type Edge,
   type EdgeChange,
+  type FinalConnectionState,
   type NodeChange,
   type Node,
 } from '@xyflow/react'
@@ -80,7 +82,49 @@ function Canvas({ boardId }: { boardId: string }) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   // move-together 需要區域拖曳前的位置與大小
   const sectionsRef = useRef(new Map<string, Section>())
-  const { screenToFlowPosition } = useReactFlow()
+  const { screenToFlowPosition, getViewport, setViewport } = useReactFlow()
+
+  // #2 框選時若拖到視窗邊緣，畫面隨方向自動捲動（Heptabase 式體驗）
+  const pointerRef = useRef({ x: 0, y: 0 })
+  const panTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pointerMoveOffRef = useRef<(() => void) | null>(null)
+
+  const handleSelectionEnd = useCallback(() => {
+    if (panTimerRef.current) {
+      clearInterval(panTimerRef.current)
+      panTimerRef.current = null
+    }
+    pointerMoveOffRef.current?.()
+    pointerMoveOffRef.current = null
+  }, [])
+
+  const handleSelectionStart = useCallback(() => {
+    const onMove = (e: PointerEvent) => {
+      pointerRef.current = { x: e.clientX, y: e.clientY }
+    }
+    window.addEventListener('pointermove', onMove)
+    pointerMoveOffRef.current = () => window.removeEventListener('pointermove', onMove)
+    if (panTimerRef.current) clearInterval(panTimerRef.current)
+    panTimerRef.current = setInterval(() => {
+      const rect = wrapperRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const EDGE = 56 // 觸發自動捲的邊緣寬度（px）
+      const SPEED = 14 // 每次位移上限（px）
+      const { x, y } = pointerRef.current
+      let dx = 0
+      let dy = 0
+      if (x < rect.left + EDGE) dx = (rect.left + EDGE - x) / EDGE
+      else if (x > rect.right - EDGE) dx = (rect.right - EDGE - x) / EDGE
+      if (y < rect.top + EDGE) dy = (rect.top + EDGE - y) / EDGE
+      else if (y > rect.bottom - EDGE) dy = (rect.bottom - EDGE - y) / EDGE
+      if (dx !== 0 || dy !== 0) {
+        const vp = getViewport()
+        setViewport({ x: vp.x + dx * SPEED, y: vp.y + dy * SPEED, zoom: vp.zoom })
+      }
+    }, 16)
+  }, [getViewport, setViewport])
+
+  useEffect(() => handleSelectionEnd, [handleSelectionEnd])
 
   const boards = useWhiteboardStore((s) => s.boards)
   const board = boards.find((b) => b.id === boardId)
@@ -238,6 +282,27 @@ function Canvas({ boardId }: { boardId: string }) {
     [boardId, setEdges],
   )
 
+  // #6 從卡片的連接點拉出後，放開時只要落在任一張卡片上就連線（不必精準對到端點）
+  const handleConnectEnd = useCallback(
+    (event: MouseEvent | TouchEvent, connectionState: FinalConnectionState) => {
+      // 已經連到某個端點就交給 onConnect 處理，這裡只補「落在卡片本體」的情況
+      if (connectionState.isValid) return
+      const fromNode = connectionState.fromNode
+      if (!fromNode || fromNode.type !== 'card') return
+      const point = 'changedTouches' in event ? event.changedTouches[0] : event
+      const dropEl = document.elementFromPoint(point.clientX, point.clientY) as HTMLElement | null
+      const targetId = dropEl?.closest('.react-flow__node')?.getAttribute('data-id')
+      if (!targetId || targetId === fromNode.id) return
+      const targetNode = nodes.find((n) => n.id === targetId)
+      if (!targetNode || targetNode.type !== 'card') return
+      // 避免重複連線
+      const exists = edges.some((e) => e.source === fromNode.id && e.target === targetId)
+      if (exists) return
+      handleConnect({ source: fromNode.id, target: targetId, sourceHandle: null, targetHandle: null })
+    },
+    [nodes, edges, handleConnect],
+  )
+
   const handleEdgeDoubleClick = useCallback(
     (_: unknown, edge: Edge) => {
       const label = window.prompt(
@@ -264,10 +329,17 @@ function Canvas({ boardId }: { boardId: string }) {
     async (x: number, y: number) => {
       const card = await createCardInStore()
       await addInstance(card.id, x, y)
+      // #7 立刻讓卡片庫反映新卡片（不必刷新頁面）
+      void useCardStore.getState().load()
       setEditingCardId(card.id)
     },
     [createCardInStore, addInstance],
   )
+
+  // #8/#14 點白板空白處：關閉編輯視窗、取消選取，但停留在白板
+  const handlePaneClick = useCallback(() => {
+    setEditingCardId(null)
+  }, [])
 
   const handlePaneDoubleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -362,10 +434,16 @@ function Canvas({ boardId }: { boardId: string }) {
           onEdgesChange={handleEdgesChange}
           onNodeDragStop={handleNodeDragStop}
           onConnect={handleConnect}
+          onConnectEnd={handleConnectEnd}
           onEdgeDoubleClick={handleEdgeDoubleClick}
+          onPaneClick={handlePaneClick}
+          onSelectionStart={handleSelectionStart}
+          onSelectionEnd={handleSelectionEnd}
           onNodeDoubleClick={(_, node) => {
             if (node.type === 'card') setEditingCardId((node as CardNodeType).data.cardId)
           }}
+          connectionMode={ConnectionMode.Loose}
+          connectionRadius={60}
           zoomOnDoubleClick={false}
           deleteKeyCode={['Backspace', 'Delete']}
           fitView
