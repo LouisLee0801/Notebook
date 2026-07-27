@@ -48,6 +48,13 @@ export const cardRepository = {
     await db.cards.update(id, { deletedAt: null, updatedAt: now })
   },
 
+  /** 清空垃圾桶：把所有已軟刪除的卡片永久刪除（#1） */
+  async emptyTrash(): Promise<number> {
+    const trashed = await db.cards.filter((c) => c.deletedAt !== null).toArray()
+    for (const card of trashed) await this.hardDelete(card.id)
+    return trashed.length
+  },
+
   /** 永久刪除：連同白板實例、相關連線、雙向連結與標籤關聯一併清除 */
   async hardDelete(id: string): Promise<void> {
     await db.transaction(

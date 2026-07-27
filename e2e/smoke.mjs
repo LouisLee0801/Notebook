@@ -13,6 +13,18 @@ const log = (m) => console.log('✓', m)
 let nextPrompt = ''
 page.on('dialog', (d) => d.accept(d.type() === 'prompt' ? nextPrompt : undefined))
 
+// 標題現在是可格式化的編輯器（.title-input，contenteditable），非 <input>
+async function setTitle(text) {
+  const el = page.locator('.title-input').first()
+  await el.click()
+  await page.keyboard.press('ControlOrMeta+a')
+  await page.keyboard.press('Delete')
+  if (text) await page.keyboard.insertText(text)
+}
+async function getTitle() {
+  return (await page.locator('.title-input').first().textContent())?.trim() ?? ''
+}
+
 await page.goto(BASE_URL)
 // M0：已設定 Supabase → 首次載入出現登入頁；測試走離線路徑
 await page.waitForSelector('text=先離線使用')
@@ -23,21 +35,21 @@ log('app loaded (login gate -> offline mode)')
 
 // ---- M1：卡片 + 編輯器 ----
 await page.click('[aria-label="新增卡片"]')
-await page.waitForSelector('input[placeholder="未命名卡片"]')
-await page.fill('input[placeholder="未命名卡片"]', '我的第一張卡片')
-await page.click('.tiptap')
+await page.waitForSelector('.title-input')
+await setTitle('我的第一張卡片')
+await page.click('.tiptap:not(.title-input)')
 await page.keyboard.type('這是內文。')
 await page.keyboard.press('Enter')
 await page.keyboard.type('/標題')
 await page.waitForSelector('.slash-menu-item')
 await page.keyboard.press('Enter')
 await page.keyboard.type('章節一')
-if ((await page.textContent('.tiptap h1')) !== '章節一') throw new Error('slash menu failed')
+if ((await page.textContent('.tiptap:not(.title-input) h1')) !== '章節一') throw new Error('slash menu failed')
 log('M1: card + editor + slash menu')
 
 await page.keyboard.press('Enter')
 await page.keyboard.type('- 清單項目')
-if (!(await page.textContent('.tiptap ul li'))?.includes('清單項目'))
+if (!(await page.textContent('.tiptap:not(.title-input) ul li'))?.includes('清單項目'))
   throw new Error('markdown shortcut failed')
 log('M1: markdown input rules')
 
@@ -47,38 +59,38 @@ await page.keyboard.press('Enter')
 await page.keyboard.type('/表格')
 await page.waitForSelector('.slash-menu-item')
 await page.keyboard.press('Enter')
-await page.waitForSelector('.tiptap table th')
+await page.waitForSelector('.tiptap:not(.title-input) table th')
 await page.keyboard.type('表頭一')
-if (!(await page.textContent('.tiptap table th'))?.includes('表頭一'))
+if (!(await page.textContent('.tiptap:not(.title-input) table th'))?.includes('表頭一'))
   throw new Error('table block failed')
 log('M5: table block inserted and editable')
 
 // 選字格式工具列（粗體）
-await page.click('.tiptap p:has-text("這是內文。")', { clickCount: 3 })
+await page.click('.tiptap:not(.title-input) p:has-text("這是內文。")', { clickCount: 3 })
 await page.waitForSelector('.format-bar')
 await page.click('.format-bar button[title="粗體"]')
-if (!(await page.$('.tiptap strong'))) throw new Error('bold via format bar failed')
+if (!(await page.$('.tiptap:not(.title-input) strong'))) throw new Error('bold via format bar failed')
 log('新: format bar bold works')
 
 // 文字顏色（藍）：選較低的清單項目，避免浮層與標題/標籤列重疊
-await page.click('.tiptap ul li', { clickCount: 3 })
+await page.click('.tiptap:not(.title-input) ul li', { clickCount: 3 })
 await page.waitForSelector('.format-bar')
 await page.waitForTimeout(150)
 await page.click('.format-bar button[aria-label="文字顏色 #2563eb"]')
 await page.waitForTimeout(150)
-const coloredSpan = await page.$('.tiptap span[style*="color"]')
+const coloredSpan = await page.$('.tiptap:not(.title-input) span[style*="color"]')
 if (!coloredSpan) throw new Error('text color not applied')
 log('新: text color applies')
 
 // #6 抽成卡片：新增一段，選取後抽成一張新卡片並連結
-await page.click('.tiptap')
+await page.click('.tiptap:not(.title-input)')
 await page.keyboard.press('Control+End')
 await page.keyboard.press('Enter')
 await page.keyboard.type('關鍵概念X')
-await page.click('.tiptap p:has-text("關鍵概念X")', { clickCount: 3 })
+await page.click('.tiptap:not(.title-input) p:has-text("關鍵概念X")', { clickCount: 3 })
 await page.waitForSelector('.format-bar')
 await page.click('.format-bar button[title="把選取文字抽成一張新卡片並連結"]')
-await page.waitForSelector('.tiptap .card-link:has-text("關鍵概念X")')
+await page.waitForSelector('.tiptap:not(.title-input) .card-link:has-text("關鍵概念X")')
 await page.waitForSelector('aside:has-text("關鍵概念X")')
 log('新: turn selection into a linked card (#6)')
 
@@ -87,7 +99,7 @@ log('新: turn selection into a linked card (#6)')
   const [fc] = await Promise.all([
     page.waitForEvent('filechooser'),
     (async () => {
-      await page.click('.tiptap')
+      await page.click('.tiptap:not(.title-input)')
       await page.keyboard.press('Control+End')
       await page.keyboard.press('Enter')
       await page.keyboard.type('/檔案')
@@ -96,28 +108,28 @@ log('新: turn selection into a linked card (#6)')
     })(),
   ])
   await fc.setFiles({ name: '筆記.txt', mimeType: 'text/plain', buffer: Buffer.from('hello attachment') })
-  await page.waitForSelector('.tiptap a.file-attach:has-text("筆記.txt")')
+  await page.waitForSelector('.tiptap:not(.title-input) a.file-attach:has-text("筆記.txt")')
 }
 log('新: file attachment inserted (#7)')
 
 // 標題可逐字輸入且不遺失（IME 修復的回歸保護）＋側邊欄同步
-await page.fill('input[placeholder="未命名卡片"]', '')
-await page.click('input[placeholder="未命名卡片"]')
-await page.keyboard.type('重新命名的標題')
-if ((await page.inputValue('input[placeholder="未命名卡片"]')) !== '重新命名的標題')
+await setTitle('')
+await page.click('.title-input')
+await page.keyboard.insertText('重新命名的標題')
+if ((await getTitle()) !== '重新命名的標題')
   throw new Error('title typing lost characters')
 await page.waitForSelector('aside >> text=重新命名的標題')
 log('新: title types fully and syncs to sidebar (IME fix)')
 // 還原名稱，後續步驟仍以原名尋找
-await page.fill('input[placeholder="未命名卡片"]', '我的第一張卡片')
+await setTitle('我的第一張卡片')
 await page.waitForSelector('aside >> text=我的第一張卡片')
 
 await page.waitForTimeout(800)
 await page.reload()
 await page.waitForSelector('text=我的第一張卡片')
 await page.click('text=我的第一張卡片')
-await page.waitForSelector('.tiptap')
-const body = await page.textContent('.tiptap')
+await page.waitForSelector('.tiptap:not(.title-input)')
+const body = await page.textContent('.tiptap:not(.title-input)')
 if (!body.includes('這是內文') || !body.includes('章節一')) throw new Error('persistence failed')
 log('M1: reload persistence')
 
@@ -130,12 +142,12 @@ log('M2: whiteboard created and opened (with minimap)')
 // 雙擊空白處新增卡片（會開啟右側編輯抽屜）
 await page.dblclick('.react-flow__pane', { position: { x: 500, y: 300 } })
 await page.waitForSelector('text=編輯卡片')
-await page.fill('input[placeholder="未命名卡片"]', '白板上的卡片')
+await setTitle('白板上的卡片')
 await page.waitForSelector('.card-node-title:has-text("白板上的卡片")')
 log('M2: dblclick creates card, drawer edit syncs to node')
 
 // 關閉時強制存檔：打字後「不等 debounce」立刻關閉，內容仍存入節點
-await page.click('.flex.w-96 .tiptap')
+await page.click('.flex.w-96 .tiptap:not(.title-input)')
 await page.keyboard.type('關閉前最後一句')
 await page.click('[aria-label="關閉編輯"]') // 立即關閉（< 400ms debounce）
 await page.waitForSelector('.card-node-body:has-text("關閉前最後一句")')
@@ -157,7 +169,7 @@ log('M2: drag existing card from library onto board 2')
 // 在板 2 編輯卡片，回到板 1 應同步（內容單一來源）
 await page.dblclick('.card-node')
 await page.waitForSelector('text=編輯卡片')
-await page.fill('input[placeholder="未命名卡片"]', '同步後的標題')
+await setTitle('同步後的標題')
 await page.waitForTimeout(600)
 await page.click('aside >> text=白板 1')
 await page.waitForSelector('.card-node-title:has-text("同步後的標題")')
@@ -182,7 +194,7 @@ await page.waitForSelector('.sticky-node')
   await page.mouse.up()
 }
 await page.click('.sticky-node') // 選取後才進入編輯（富文字，#10）
-await page.click('.sticky-node .tiptap')
+await page.click('.sticky-node .tiptap:not(.title-input)')
 await page.keyboard.insertText('記得補充參考資料')
 await page.waitForTimeout(150)
 await page.click('.react-flow__pane', { position: { x: 6, y: 6 } }) // 點空白：失焦存檔＋收合工具列
@@ -233,6 +245,20 @@ await page.click('button[aria-label="刪除便利貼"]')
 await page.waitForSelector('.sticky-node', { state: 'detached' })
 log('新: sticky delete button removes the note')
 
+// 連線（#6/#10）：卡片兩側連接點皆為 connectable（source 右、target 左），
+// ConnectionMode.Loose 允許從任一側拉出、落在任一張卡片本體即連線、可多條。
+// 註：React Flow 連線走 pointer capture，headless 合成指標事件無法觸發，
+// 故此互動改由手動/實機驗證，這裡只確認連接點存在且可連線。
+{
+  const info = await page.evaluate(() => {
+    const h = document.querySelector('.react-flow__node-card .react-flow__handle.source')
+    return h ? { connectable: h.className.includes('connectable'), pe: getComputedStyle(h).pointerEvents } : null
+  })
+  if (!info || !info.connectable || info.pe !== 'all')
+    throw new Error('card source handle not connectable: ' + JSON.stringify(info))
+}
+log('新: card handles are connectable (source/target, #6/#10)')
+
 // ---- M3：日誌 + 雙向連結 ----
 await page.click('aside >> text=日誌')
 await page.waitForSelector('text=今天')
@@ -265,7 +291,7 @@ log('新: journey calendar toggles month/weeks (#5)')
 await page.click('text=今天')
 await page.waitForSelector('text=今天')
 
-await page.click('.journal-editor .tiptap')
+await page.click('.journal-editor .tiptap:not(.title-input)')
 await page.keyboard.type('參考 [[我的第一')
 await page.waitForSelector('.slash-menu-item')
 await page.keyboard.press('Enter')
@@ -288,16 +314,16 @@ log('M3: backlinks panel shows the journal entry (acceptance)')
 await page.click('aside >> text=日誌')
 await page.waitForSelector('.journal-editor .card-link')
 await page.click('.journal-editor .card-link')
-await page.waitForSelector('input[placeholder="未命名卡片"]')
+await page.waitForSelector('.title-input')
 log('M3: clicking a card link navigates to the card')
 
 // ---- M5：未連結提及 ----
 await page.click('[aria-label="新增卡片"]')
 await page.waitForFunction(
-  () => document.querySelector('input[placeholder="未命名卡片"]')?.value === '',
+  () => (document.querySelector('.title-input')?.textContent ?? '').trim() === '',
 )
-await page.fill('input[placeholder="未命名卡片"]', '隨手記')
-await page.click('.tiptap')
+await setTitle('隨手記')
+await page.click('.tiptap:not(.title-input)')
 await page.keyboard.type('這段提到了我的第一張卡片但沒有加連結。')
 await page.waitForTimeout(800)
 
@@ -353,8 +379,8 @@ await page.waitForSelector('input[placeholder="搜尋卡片、白板，或執行
 await page.keyboard.type('章節一')
 await page.waitForSelector('li >> text=我的第一張卡片')
 await page.keyboard.press('Enter')
-await page.waitForSelector('input[placeholder="未命名卡片"]')
-const openedTitle = await page.inputValue('input[placeholder="未命名卡片"]')
+await page.waitForSelector('.title-input')
+const openedTitle = await getTitle()
 if (openedTitle !== '我的第一張卡片') throw new Error('palette jump failed: ' + openedTitle)
 log('M4: Cmd+K full-text search jumps to card')
 
@@ -362,9 +388,9 @@ log('M4: Cmd+K full-text search jumps to card')
 await page.click('[aria-label="新增卡片"]')
 // 等新卡片（空標題）真的選上，避免把標題填進上一張卡
 await page.waitForFunction(
-  () => document.querySelector('input[placeholder="未命名卡片"]')?.value === '',
+  () => (document.querySelector('.title-input')?.textContent ?? '').trim() === '',
 )
-await page.fill('input[placeholder="未命名卡片"]', '要刪的卡片')
+await setTitle('要刪的卡片')
 await page.waitForTimeout(500)
 await page.hover('aside li:has-text("要刪的卡片")')
 await page.click('aside li:has-text("要刪的卡片") [aria-label="刪除卡片"]')

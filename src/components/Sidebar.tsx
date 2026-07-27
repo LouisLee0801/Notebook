@@ -27,22 +27,27 @@ function stripHtml(html: string): string {
 
 function AccountRow() {
   const session = useAuthStore((s) => s.session)
-  const signOut = useAuthStore((s) => s.signOut)
   const unskip = useAuthStore((s) => s.unskip)
+  const openAccount = useWhiteboardStore((s) => s.openAccount)
 
   return (
     <div className="flex items-center justify-between gap-2 border-t border-gray-200 px-4 py-2">
       {session ? (
         <>
-          <span className="min-w-0 truncate text-[11px] text-gray-500" title={session.user.email}>
-            ☁️ {session.user.email}
-          </span>
           <button
             type="button"
-            onClick={() => void signOut()}
+            onClick={openAccount}
+            className="min-w-0 flex-1 truncate text-left text-[11px] text-gray-500 hover:text-gray-800"
+            title={`${session.user.email}（點擊管理帳號）`}
+          >
+            ☁️ {session.user.email}
+          </button>
+          <button
+            type="button"
+            onClick={openAccount}
             className="shrink-0 text-[11px] text-gray-400 hover:text-gray-700"
           >
-            登出
+            管理
           </button>
         </>
       ) : (
@@ -239,6 +244,7 @@ export function Sidebar() {
   const openJournal = useWhiteboardStore((s) => s.openJournal)
   const openTag = useWhiteboardStore((s) => s.openTag)
   const openTrash = useWhiteboardStore((s) => s.openTrash)
+  const openAccount = useWhiteboardStore((s) => s.openAccount)
   const tags = useTagStore((s) => s.tags)
   const deleteTag = useTagStore((s) => s.deleteTag)
   const createBoard = useWhiteboardStore((s) => s.createBoard)
@@ -463,7 +469,15 @@ export function Sidebar() {
         >
           🗑 垃圾桶
         </button>
-        <span className="px-2 text-[11px] text-gray-400">Ctrl/⌘+K 搜尋</span>
+        <button
+          type="button"
+          onClick={openAccount}
+          className={`rounded-md px-2 py-1 text-xs hover:bg-gray-200 ${
+            view.type === 'account' ? 'bg-gray-200 text-gray-800' : 'text-gray-500'
+          }`}
+        >
+          ⚙️ 帳號
+        </button>
       </div>
       {syncConfigured && <AccountRow />}
       <p className="border-t border-gray-200 px-4 py-2 text-[11px] leading-relaxed text-gray-400">

@@ -69,8 +69,8 @@ export function JournalView() {
               </span>
             )}
             {holiday && (
-              <span className="rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-600">
-                {holiday}
+              <span className="rounded bg-orange-100 px-1.5 py-0.5 text-xs font-medium text-orange-600">
+                🎌 {holiday}
               </span>
             )}
           </h2>

@@ -29,10 +29,28 @@ export function TrashView() {
     await refresh()
   }
 
+  const emptyTrash = async () => {
+    if (!window.confirm(`要永久刪除垃圾桶內全部 ${trashed.length} 張卡片嗎？此動作無法復原。`)) return
+    await cardRepository.emptyTrash()
+    await useCardStore.getState().load()
+    await refresh()
+  }
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto w-full max-w-3xl px-8 py-10">
-        <h1 className="mb-6 text-2xl font-bold text-gray-900">垃圾桶</h1>
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900">垃圾桶</h1>
+          {trashed.length > 0 && (
+            <button
+              type="button"
+              onClick={() => void emptyTrash()}
+              className="rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-100"
+            >
+              🗑 清空垃圾桶（永久刪除全部）
+            </button>
+          )}
+        </div>
         {trashed.length === 0 && <p className="text-sm text-gray-400">垃圾桶是空的</p>}
         <ul className="space-y-2">
           {trashed.map((card) => (

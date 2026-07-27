@@ -183,6 +183,45 @@
   height: 0;
 }
 
+/* ---- 卡片標題編輯器（#9 可格式化）---- */
+
+.title-input {
+  /* 覆蓋 .tiptap（TipTap 會自動加上 tiptap class）的 50vh 最小高度等內文樣式 */
+  min-height: 0;
+  outline: none;
+  font-weight: 700;
+  font-size: 1.875rem;
+  line-height: 1.25;
+  color: #111827;
+}
+
+.title-input.is-compact {
+  font-size: 1.5rem;
+}
+
+.title-input p {
+  margin: 0;
+}
+
+.title-input mark {
+  border-radius: 0.15rem;
+  padding: 0 0.1rem;
+}
+
+.title-input p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #d1d5db;
+  pointer-events: none;
+  height: 0;
+}
+
+/* 白板卡片節點標題若有格式，段落不要撐出額外間距 */
+.card-node-title p {
+  margin: 0;
+  display: inline;
+}
+
 /* ---- 卡片連結 chip ---- */
 
 .card-link {
@@ -282,8 +321,16 @@
   margin-top: 0.35rem;
   font-size: 0.8rem;
   color: #374151;
-  /* #5 內文過長時可在卡片內上下捲動（搭配 nowheel 讓滾輪作用於此而非畫布） */
+  /* #5/#8 內文過長時可在卡片內上下捲動（搭配 nowheel 讓滾輪作用於此而非畫布） */
   overflow-y: auto;
+  /* #2 內文預覽不可被滑鼠選取，避免拖曳時選字而非移動卡片 */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 自動高度的卡片：內文超過上限時就地捲動（不必先手動拉高，#8） */
+.card-node.is-autosize .card-node-body {
+  max-height: 220px;
 }
 
 /* 內文預覽中的標題一律縮小，確保永遠不會比卡片標題還大（#4） */
@@ -302,10 +349,18 @@
 }
 
 .card-node-handle {
-  width: 10px !important;
-  height: 10px !important;
+  width: 14px !important;
+  height: 14px !important;
   background: #9ca3af !important;
   border: 2px solid white !important;
+}
+
+/* 選取或滑過卡片時，連接點更明顯、更好抓（#10 從任一側拉線） */
+.react-flow__node-card:hover .card-node-handle,
+.react-flow__node-card.selected .card-node-handle {
+  background: #3b82f6 !important;
+  width: 16px !important;
+  height: 16px !important;
 }
 
 /* ---- 連結預覽浮窗 ---- */

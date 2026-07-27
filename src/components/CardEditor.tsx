@@ -1,6 +1,11 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
 import { BubbleMenu, EditorContent, useEditor } from '@tiptap/react'
 import Placeholder from '@tiptap/extension-placeholder'
+import StarterKit from '@tiptap/starter-kit'
+import Underline from '@tiptap/extension-underline'
+import Highlight from '@tiptap/extension-highlight'
+import TextStyle from '@tiptap/extension-text-style'
+import Color from '@tiptap/extension-color'
 import type { Content, Editor } from '@tiptap/core'
 import type { Card } from '../types'
 import { useCardStore } from '../store/useCardStore'
@@ -9,6 +14,7 @@ import { baseExtensions, fileToAttachment, fileToDataUrl } from '../editor/exten
 import { SlashMenu } from '../editor/slashMenu'
 import { CardLinkSuggestion } from '../editor/cardLink'
 import { cardToMarkdown, downloadMarkdown } from '../editor/markdown'
+import { escapeHtml, getTitleHtml, setTitleHtml } from '../editor/titleFormat'
 import { BacklinksPanel } from './BacklinksPanel'
 import { TagChips } from './TagChips'
 
@@ -239,6 +245,79 @@ function FormatBar({ editor }: { editor: Editor }) {
   )
 }
 
+// 標題編輯器：僅段落 + 基本標記（無標題/清單/表格），單行。
+const titleExtensions = [
+  StarterKit.configure({
+    heading: false,
+    bulletList: false,
+    orderedList: false,
+    listItem: false,
+    blockquote: false,
+    codeBlock: false,
+    horizontalRule: false,
+  }),
+  Underline,
+  Highlight.configure({ multicolor: true }),
+  TextStyle,
+  Color,
+  Placeholder.configure({ placeholder: '未命名卡片' }),
+]
+
+const TITLE_TEXT_COLORS = ['#dc2626', '#ea580c', '#16a34a', '#2563eb', '#7c3aed']
+
+// 標題選字後的格式工具列（#9：粗體/斜體/底線/刪除線/螢光/文字色）
+function TitleFormatBar({ editor }: { editor: Editor }) {
+  const [, force] = useReducer((x: number) => x + 1, 0)
+  useEffect(() => {
+    const rerender = () => force()
+    editor.on('selectionUpdate', rerender)
+    editor.on('transaction', rerender)
+    return () => {
+      editor.off('selectionUpdate', rerender)
+      editor.off('transaction', rerender)
+    }
+  }, [editor])
+  const btn = (active: boolean) => `format-btn${active ? ' is-active' : ''}`
+  return (
+    <div className="format-bar" onMouseDown={(e) => e.preventDefault()}>
+      <div className="format-row">
+        <button type="button" className={btn(editor.isActive('bold'))} title="粗體" onClick={() => editor.chain().focus().toggleBold().run()}>
+          <b>B</b>
+        </button>
+        <button type="button" className={btn(editor.isActive('italic'))} title="斜體" onClick={() => editor.chain().focus().toggleItalic().run()}>
+          <i>I</i>
+        </button>
+        <button type="button" className={btn(editor.isActive('underline'))} title="底線" onClick={() => editor.chain().focus().toggleUnderline().run()}>
+          <u>U</u>
+        </button>
+        <button type="button" className={btn(editor.isActive('strike'))} title="刪除線" onClick={() => editor.chain().focus().toggleStrike().run()}>
+          <s>S</s>
+        </button>
+        <button type="button" className={btn(editor.isActive('highlight'))} title="螢光" onClick={() => editor.chain().focus().toggleHighlight().run()}>
+          <span className="format-hl">H</span>
+        </button>
+        <span className="format-sep" />
+        {TITLE_TEXT_COLORS.map((c) => (
+          <button
+            key={c}
+            type="button"
+            aria-label={`標題文字顏色 ${c}`}
+            title="文字顏色"
+            className="format-swatch"
+            style={{ color: c }}
+            onClick={() => editor.chain().focus().setColor(c).run()}
+          >
+            A
+          </button>
+        ))}
+        <button type="button" className="format-btn" title="清除顏色" onClick={() => editor.chain().focus().unsetColor().run()}>
+          ⊘
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function CardEditor({
   card,
   compact = false,
@@ -269,9 +348,34 @@ export function CardEditor({
     }
   }, [flushTitle, flushContent])
 
-  // 標題用本地狀態，避免每次輸入都被 store 回寫覆蓋 —— 那會中斷注音/拼音的組字。
-  // 本元件在各處都以 key={card.id} 掛載，切換卡片會重新掛載並重新初始化，故不需額外同步。
-  const [title, setTitle] = useState(card.title)
+  // 標題改為輕量編輯器（#9 可選字加粗/變色/螢光）。純文字存 card.title、格式存本機。
+  // 本元件在各處都以 key={card.id} 掛載，切換卡片會重新掛載並重新初始化。
+  const titleEditor = useEditor(
+    {
+      extensions: titleExtensions,
+      content: getTitleHtml(card.id) || (card.title ? `<p>${escapeHtml(card.title)}</p>` : ''),
+      editorProps: {
+        attributes: { class: `title-input ${compact ? 'is-compact' : ''}` },
+        // 標題為單行：Enter 不換行
+        handleKeyDown: (_, event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            return true
+          }
+          return false
+        },
+      },
+      onUpdate: ({ editor }) => {
+        const plain = editor.getText()
+        const html = editor.getHTML()
+        scheduleTitleSave(() => {
+          void updateCard(card.id, { title: plain })
+          setTitleHtml(card.id, html, plain)
+        })
+      },
+    },
+    [card.id],
+  )
 
   const extensions = useMemo(
     () => [
@@ -347,18 +451,14 @@ export function CardEditor({
         {!hideTitle && (
           <>
             <div className="flex items-start gap-2">
-              <input
-                className={`w-full min-w-0 flex-1 bg-transparent font-bold outline-none placeholder:text-gray-300 ${
-                  compact ? 'text-2xl' : 'text-3xl'
-                }`}
-                placeholder="未命名卡片"
-                value={title}
-                onChange={(e) => {
-                  const next = e.target.value
-                  setTitle(next)
-                  scheduleTitleSave(() => void updateCard(card.id, { title: next }))
-                }}
-              />
+              {titleEditor && (
+                <BubbleMenu editor={titleEditor} tippyOptions={{ duration: 0, maxWidth: 'none' }}>
+                  <TitleFormatBar editor={titleEditor} />
+                </BubbleMenu>
+              )}
+              <div className="min-w-0 flex-1">
+                <EditorContent editor={titleEditor} />
+              </div>
               <button
                 type="button"
                 title="匯出 Markdown"

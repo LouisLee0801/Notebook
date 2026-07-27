@@ -38,7 +38,10 @@ function toCardNode(instance: CardInstance): CardNodeType {
     position: { x: instance.x, y: instance.y },
     width: instance.width,
     height: instance.height || undefined,
-    data: { cardId: instance.cardId, color: instance.color },
+    // 卡片層級高於便利貼：便利貼疊在卡片上時仍可點選/移動卡片（#7）
+    zIndex: 1,
+    // 沒有手動調過高度 → 自動高度，超長內文卡片內捲動（#8）
+    data: { cardId: instance.cardId, color: instance.color, autoHeight: !instance.height },
   }
 }
 
@@ -49,6 +52,7 @@ function toStickyNode(note: BoardNote): StickyNodeType {
     position: { x: note.x, y: note.y },
     width: note.width,
     height: note.height,
+    zIndex: 0,
     data: { text: note.text },
   }
 }
