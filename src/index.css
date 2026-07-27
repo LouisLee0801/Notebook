@@ -220,6 +220,8 @@
 /* ---- 白板卡片節點 ---- */
 
 .card-node {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
   min-height: 48px;
@@ -231,27 +233,72 @@
   padding: 0.6rem 0.8rem;
 }
 
+/* 折疊：不撐開高度，只露出標題列 */
+.card-node.is-collapsed {
+  height: auto;
+}
+
 .card-node.is-selected {
   border-color: #60a5fa;
   box-shadow: 0 0 0 2px rgb(96 165 250 / 0.35);
 }
 
+.card-node-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.card-node-collapse {
+  flex-shrink: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+  line-height: 1;
+  font-size: 0.7rem;
+  color: #9ca3af;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.card-node-collapse:hover {
+  background: rgb(0 0 0 / 0.06);
+  color: #4b5563;
+}
+
+/* #4 標題明顯大於內文、粗體，避免比內文小 */
 .card-node-title {
-  font-weight: 600;
-  font-size: 0.9rem;
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.35;
   color: #111827;
-  margin-bottom: 0.25rem;
 }
 
 .card-node-body {
+  flex: 1;
   min-height: 0;
+  margin-top: 0.35rem;
   font-size: 0.8rem;
   color: #374151;
-  pointer-events: none;
+  /* #5 內文過長時可在卡片內上下捲動（搭配 nowheel 讓滾輪作用於此而非畫布） */
+  overflow-y: auto;
+}
+
+/* 內文預覽中的標題一律縮小，確保永遠不會比卡片標題還大（#4） */
+.card-node-body :is(h1, h2, h3) {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 0.2rem;
 }
 
 .card-node-body > * + * {
   margin-top: 0.3rem;
+}
+
+.card-node-body img {
+  pointer-events: none;
 }
 
 .card-node-handle {
@@ -328,9 +375,9 @@
 /* ---- 便利貼 ---- */
 
 .sticky-node {
+  display: flex;
   width: 100%;
   height: 100%;
-  resize: none;
   border: 1px solid #fde68a;
   border-radius: 0.5rem;
   background: #fef9c3;
@@ -339,23 +386,62 @@
   font-size: 0.85rem;
   line-height: 1.5;
   color: #713f12;
-  outline: none;
-}
-
-.sticky-node::placeholder {
-  color: #ca8a04;
-  opacity: 0.5;
-}
-
-.sticky-node-view {
-  white-space: pre-wrap;
   overflow: hidden;
   cursor: grab;
 }
 
-.sticky-node-placeholder {
-  color: #ca8a04;
-  opacity: 0.5;
+.sticky-node.is-editing {
+  cursor: text;
+}
+
+.sticky-node-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.sticky-node-content .tiptap {
+  min-height: 100%;
+  outline: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.sticky-node-content .tiptap p {
+  margin: 0;
+}
+
+.sticky-node-content .tiptap mark {
+  border-radius: 0.15rem;
+  padding: 0 0.1rem;
+}
+
+/* 便利貼格式小工具列（#10） */
+.sticky-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  background: #1f2937;
+  border-radius: 0.5rem;
+  padding: 0.3rem;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+}
+
+.sticky-swatch {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sticky-swatch:hover {
+  background: #374151;
 }
 
 /* ---- 節點工具列（便利貼/區域刪除、重新命名）---- */

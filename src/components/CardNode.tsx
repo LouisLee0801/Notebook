@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+import { memo, useMemo, useState } from 'react'
 import {
   Handle,
   NodeResizer,
@@ -15,6 +15,24 @@ import { boardItemsRepository } from '../db/whiteboardRepository'
 
 export type CardNodeType = Node<{ cardId: string; color: string | null }, 'card'>
 
+// 折疊狀態屬於「白板上的檢視偏好」，用 localStorage 存（不進雲端同步）
+const COLLAPSE_KEY = 'notebook-card-collapsed'
+function loadCollapsed(id: string): boolean {
+  try {
+    return localStorage.getItem(`${COLLAPSE_KEY}:${id}`) === '1'
+  } catch {
+    return false
+  }
+}
+function saveCollapsed(id: string, v: boolean): void {
+  try {
+    if (v) localStorage.setItem(`${COLLAPSE_KEY}:${id}`, '1')
+    else localStorage.removeItem(`${COLLAPSE_KEY}:${id}`)
+  } catch {
+    /* 忽略（無痕模式等） */
+  }
+}
+
 // 卡片顏色（features.md 模組 3 P1）：顏色屬於白板上的實例，不影響卡片本身
 export const CARD_COLORS: { key: string | null; label: string; bg: string; border: string }[] = [
   { key: null, label: '白', bg: '#ffffff', border: '#e5e7eb' },
@@ -28,6 +46,7 @@ export const CARD_COLORS: { key: string | null; label: string; bg: string; borde
 export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps<CardNodeType>) {
   const card = useCardStore((s) => s.cards.find((c) => c.id === data.cardId))
   const { updateNodeData, deleteElements } = useReactFlow()
+  const [collapsed, setCollapsed] = useState(() => loadCollapsed(id))
 
   const html = useMemo(() => {
     if (!card) return ''
@@ -39,6 +58,14 @@ export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps
   }, [card])
 
   const color = CARD_COLORS.find((c) => c.key === data.color) ?? CARD_COLORS[0]
+
+  const toggleCollapse = () => {
+    setCollapsed((c) => {
+      const next = !c
+      saveCollapsed(id, next)
+      return next
+    })
+  }
 
   return (
     <>
@@ -63,17 +90,21 @@ export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps
             type="button"
             aria-label="從白板移除此卡片"
             title="從白板移除（不刪卡片）"
-            onClick={() => void deleteElements({ nodes: [{ id }] })}
+            onClick={(e) => {
+              e.stopPropagation()
+              void deleteElements({ nodes: [{ id }] })
+            }}
             className="card-toolbar-remove"
           >
             🗑
           </button>
         </div>
       </NodeToolbar>
+      {/* 折疊時鎖高度（只露標題）；展開時才可自由縮放 */}
       <NodeResizer
-        isVisible={selected}
-        minWidth={180}
-        minHeight={48}
+        isVisible={selected && !collapsed}
+        minWidth={160}
+        minHeight={60}
         lineClassName="!border-blue-400"
         handleClassName="!bg-blue-400"
         onResizeEnd={(_, params) =>
@@ -87,13 +118,33 @@ export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps
       />
       <Handle type="target" position={Position.Left} className="card-node-handle" />
       <div
-        className={`card-node ${selected ? 'is-selected' : ''}`}
+        className={`card-node ${collapsed ? 'is-collapsed' : ''} ${selected ? 'is-selected' : ''}`}
         style={{ background: color.bg, borderColor: selected ? undefined : color.border }}
       >
-        <div className="card-node-title">{card ? card.title || '未命名卡片' : '已刪除的卡片'}</div>
-        {html && (
-          /* 內容為使用者自己在編輯器輸入、經 schema 正規化的 JSON，非外部來源 */
-          <div className="tiptap card-node-body" dangerouslySetInnerHTML={{ __html: html }} />
+        <div className="card-node-header">
+          <button
+            type="button"
+            className="card-node-collapse nodrag"
+            aria-label={collapsed ? '展開卡片' : '收合卡片'}
+            title={collapsed ? '展開' : '只露出標題'}
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleCollapse()
+            }}
+          >
+            {collapsed ? '▸' : '▾'}
+          </button>
+          <div className="card-node-title">
+            {card ? card.title || '未命名卡片' : '已刪除的卡片'}
+          </div>
+        </div>
+        {!collapsed && html && (
+          /* 內容為使用者自己在編輯器輸入、經 schema 正規化的 JSON，非外部來源。
+             nowheel：讓滑鼠滾輪捲動內文而非縮放畫布（#5 長文可上下捲）。 */
+          <div
+            className="tiptap card-node-body nowheel"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
         )}
       </div>
       <Handle type="source" position={Position.Right} className="card-node-handle" />
