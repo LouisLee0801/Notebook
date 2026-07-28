@@ -27,7 +27,7 @@ export const cardRepository = {
 
   async update(
     id: string,
-    patch: Partial<Pick<Card, 'title' | 'content' | 'archivedAt' | 'folderId'>>,
+    patch: Partial<Pick<Card, 'title' | 'titleHtml' | 'content' | 'archivedAt' | 'folderId'>>,
     now = Date.now(),
   ): Promise<void> {
     await db.cards.update(id, { ...patch, updatedAt: now })

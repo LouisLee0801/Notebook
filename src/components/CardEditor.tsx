@@ -353,7 +353,11 @@ export function CardEditor({
   const titleEditor = useEditor(
     {
       extensions: titleExtensions,
-      content: getTitleHtml(card.id) || (card.title ? `<p>${escapeHtml(card.title)}</p>` : ''),
+      // 優先用已同步的 card.titleHtml；其次相容舊的本機格式；再退回純文字
+      content:
+        card.titleHtml ||
+        getTitleHtml(card.id) ||
+        (card.title ? `<p>${escapeHtml(card.title)}</p>` : ''),
       editorProps: {
         attributes: { class: `title-input ${compact ? 'is-compact' : ''}` },
         // 標題為單行：Enter 不換行
@@ -369,8 +373,12 @@ export function CardEditor({
         const plain = editor.getText()
         const html = editor.getHTML()
         scheduleTitleSave(() => {
-          void updateCard(card.id, { title: plain })
-          setTitleHtml(card.id, html, plain)
+          // 有實際格式才存 HTML，否則存 null（節點/其他處退回純文字），並保持 DB 乾淨
+          const plainWrapped = `<p>${escapeHtml(plain)}</p>`
+          const titleHtml = !plain.trim() || html === plainWrapped || html === '<p></p>' ? null : html
+          void updateCard(card.id, { title: plain, titleHtml })
+          // 舊的本機格式已搬到雲端欄位，清掉本機殘留
+          setTitleHtml(card.id, plainWrapped, plain)
         })
       },
     },

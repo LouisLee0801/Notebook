@@ -8,6 +8,7 @@ import { TrashView } from './components/TrashView'
 import { AccountView } from './components/AccountView'
 import { CommandPalette } from './components/CommandPalette'
 import { LoginView } from './components/LoginView'
+import { RecoveryView } from './components/RecoveryView'
 import { syncConfigured } from './sync/supabaseClient'
 import { useAuthStore } from './store/useAuthStore'
 import { useCardStore } from './store/useCardStore'
@@ -34,6 +35,7 @@ export default function App() {
   const authReady = useAuthStore((s) => s.ready)
   const session = useAuthStore((s) => s.session)
   const skipped = useAuthStore((s) => s.skipped)
+  const recovering = useAuthStore((s) => s.recovering)
   const initAuth = useAuthStore((s) => s.init)
 
   useEffect(() => {
@@ -62,6 +64,7 @@ export default function App() {
   }, [])
 
   if (syncConfigured && !authReady) return null
+  if (syncConfigured && recovering) return <RecoveryView />
   if (syncConfigured && !session && !skipped) return <LoginView />
 
   return (

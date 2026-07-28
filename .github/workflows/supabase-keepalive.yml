@@ -43,4 +43,5 @@ jobs:
           check "tags.color（標籤顏色）"        "tags?select=color&limit=1"
           check "folders 表（資料夾）"           "folders?select=id&limit=1"
           check "cards.folderId（卡片所屬資料夾）" "cards?select=folderId&limit=1"
+          check "cards.titleHtml（標題格式）"     "cards?select=titleHtml&limit=1"
           echo "== 完成 =="

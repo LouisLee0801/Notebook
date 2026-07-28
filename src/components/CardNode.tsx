@@ -144,7 +144,10 @@ export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps
           </button>
           {(() => {
             if (!card) return <div className="card-node-title">已刪除的卡片</div>
-            const titleHtml = titleHtmlOrNull(card.id, card.title)
+            // 優先用已同步的 card.titleHtml，其次相容舊的本機格式
+            const titleHtml = card.title.trim()
+              ? card.titleHtml || titleHtmlOrNull(card.id, card.title)
+              : null
             if (titleHtml) {
               // 標題 HTML 由標題編輯器輸出、經 schema 正規化，非外部來源
               return (

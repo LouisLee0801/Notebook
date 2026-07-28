@@ -10,6 +10,7 @@ import {
 } from '@tiptap/react'
 import { useCardStore } from '../store/useCardStore'
 import { useWhiteboardStore } from '../store/useWhiteboardStore'
+import { useJournalStore } from '../store/useJournalStore'
 import { cardRepository } from '../db/cardRepository'
 import { baseExtensions } from './extensions'
 import { dropdownRenderer, type DropdownItem } from './suggestionDropdown'
@@ -158,7 +159,9 @@ export const CardLinkSuggestion = Extension.create({
         },
         items: ({ query }) => {
           const q = query.trim().toLowerCase()
-          const cards = useCardStore.getState().cards
+          // 日誌卡片不是一般卡片，不出現在 [[ 連結選單（#7）
+          const journalIds = useJournalStore.getState().journalCardIds
+          const cards = useCardStore.getState().cards.filter((c) => !journalIds.has(c.id))
           const matches: CardLinkItem[] = cards
             .filter((c) => c.title.toLowerCase().includes(q))
             .slice(0, 8)

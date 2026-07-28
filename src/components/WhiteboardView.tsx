@@ -25,9 +25,11 @@ import { useBoardNotesStore } from '../store/useBoardNotesStore'
 import { CardNode, type CardNodeType } from './CardNode'
 import { SectionNode, type SectionNodeType } from './SectionNode'
 import { StickyNode, type StickyNodeType } from './StickyNode'
+import { FloatingEdge } from './FloatingEdge'
 import { CardEditor } from './CardEditor'
 
 const nodeTypes = { card: CardNode, section: SectionNode, sticky: StickyNode }
+const edgeTypes = { floating: FloatingEdge }
 
 type BoardNode = CardNodeType | SectionNodeType | StickyNodeType
 
@@ -52,7 +54,8 @@ function toStickyNode(note: BoardNote): StickyNodeType {
     position: { x: note.x, y: note.y },
     width: note.width,
     height: note.height,
-    zIndex: 0,
+    // #4 便利貼固定在最上層（不被卡片藏住）；仍可點選後刪除
+    zIndex: 10000,
     data: { text: note.text },
   }
 }
@@ -62,6 +65,8 @@ function toFlowEdge(edge: BoardEdge): Edge {
     id: edge.id,
     source: edge.fromInstanceId,
     target: edge.toInstanceId,
+    // #5 浮動連線：自動接到彼此面對的最近側邊，不繞圈
+    type: 'floating',
     label: edge.label ?? undefined,
     markerEnd: edge.arrow !== 'none' ? { type: MarkerType.ArrowClosed } : undefined,
     markerStart: edge.arrow === 'both' ? { type: MarkerType.ArrowClosed } : undefined,
@@ -434,6 +439,7 @@ function Canvas({ boardId }: { boardId: string }) {
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgesChange}
           onNodeDragStop={handleNodeDragStop}

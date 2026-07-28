@@ -6,12 +6,14 @@ import { useJournalStore } from '../store/useJournalStore'
 import { useTagStore } from '../store/useTagStore'
 import { useFolderStore } from '../store/useFolderStore'
 import { useBoardNotesStore } from '../store/useBoardNotesStore'
+import { useCardSelectionStore } from '../store/useCardSelectionStore'
 import { useAuthStore } from '../store/useAuthStore'
 import { boardItemsRepository } from '../db/whiteboardRepository'
 import { syncConfigured } from '../sync/supabaseClient'
 import { tagColor } from './tagColors'
 
-const CARD_DND = 'application/x-notebook-card'
+const CARD_DND = 'application/x-notebook-card' // 單張（白板上板用）
+const CARD_MULTI_DND = 'application/x-notebook-cards' // 多張（資料夾批量移動用，逗號分隔）
 
 // 便利貼內文現以 HTML 儲存；側邊欄預覽需去掉標籤只留純文字
 function stripHtml(html: string): string {
@@ -81,6 +83,10 @@ function CardItem({ card }: { card: Card }) {
   const deleteCard = useCardStore((s) => s.deleteCard)
   const view = useWhiteboardStore((s) => s.view)
   const openLibrary = useWhiteboardStore((s) => s.openLibrary)
+  const multiSelected = useCardSelectionStore((s) => s.selected.has(card.id))
+  const toggle = useCardSelectionStore((s) => s.toggle)
+  const replace = useCardSelectionStore((s) => s.replace)
+  const clearSel = useCardSelectionStore((s) => s.clear)
 
   return (
     <li className="group relative">
@@ -88,15 +94,30 @@ function CardItem({ card }: { card: Card }) {
         type="button"
         draggable
         onDragStart={(e) => {
-          e.dataTransfer.setData(CARD_DND, card.id)
+          // 拖的是已多選集合中的一張 → 帶整批；否則只帶這張（並把選取設為這張）
+          const sel = useCardSelectionStore.getState().selected
+          const ids = sel.has(card.id) && sel.size > 1 ? [...sel] : [card.id]
+          if (!sel.has(card.id)) replace([card.id])
+          e.dataTransfer.setData(CARD_DND, card.id) // 白板上板取單張
+          e.dataTransfer.setData(CARD_MULTI_DND, ids.join(','))
           e.dataTransfer.effectAllowed = 'copyMove'
         }}
-        onClick={() => {
+        onClick={(e) => {
+          // Ctrl/⌘ 點選 → 加入/移除多選；一般點選 → 開卡並清空多選
+          if (e.metaKey || e.ctrlKey) {
+            toggle(card.id)
+            return
+          }
+          clearSel()
           selectCard(card.id)
           openLibrary()
         }}
         className={`block w-full cursor-grab rounded-md px-3 py-2 text-left hover:bg-gray-200 ${
-          view.type === 'library' && card.id === selectedId ? 'bg-gray-200' : ''
+          multiSelected
+            ? 'bg-blue-100 ring-1 ring-blue-300'
+            : view.type === 'library' && card.id === selectedId
+              ? 'bg-gray-200'
+              : ''
         }`}
       >
         <span className="block truncate pr-6 text-sm font-medium text-gray-800">
@@ -129,7 +150,8 @@ function DropZone({
   children: React.ReactNode
 }) {
   const [over, setOver] = useState(false)
-  const moveCardToFolder = useCardStore((s) => s.moveCardToFolder)
+  const moveCardsToFolder = useCardStore((s) => s.moveCardsToFolder)
+  const clearSel = useCardSelectionStore((s) => s.clear)
 
   return (
     <div
@@ -142,11 +164,13 @@ function DropZone({
       }}
       onDragLeave={() => setOver(false)}
       onDrop={(e) => {
-        const id = e.dataTransfer.getData(CARD_DND)
+        const multi = e.dataTransfer.getData(CARD_MULTI_DND)
+        const ids = multi ? multi.split(',').filter(Boolean) : [e.dataTransfer.getData(CARD_DND)].filter(Boolean)
         setOver(false)
-        if (id) {
+        if (ids.length) {
           e.preventDefault()
-          void moveCardToFolder(id, folderId)
+          void moveCardsToFolder(ids, folderId)
+          clearSel()
         }
       }}
       className={`${className} ${over ? 'rounded-md bg-blue-50 ring-1 ring-blue-300' : ''}`}
@@ -236,6 +260,27 @@ export function Sidebar() {
 
   const notes = useBoardNotesStore((s) => s.notes)
   const loadNotes = useBoardNotesStore((s) => s.load)
+
+  const multiSelected = useCardSelectionStore((s) => s.selected)
+  const clearSelection = useCardSelectionStore((s) => s.clear)
+  const deleteCards = useCardStore((s) => s.deleteCards)
+
+  // Delete 鍵批量刪除已多選卡片（焦點不在輸入/編輯器時才觸發）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Delete') return
+      if (useCardSelectionStore.getState().selected.size === 0) return
+      const el = document.activeElement as HTMLElement | null
+      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return
+      const ids = [...useCardSelectionStore.getState().selected]
+      if (window.confirm(`要刪除選取的 ${ids.length} 張卡片嗎？（會移到垃圾桶）`)) {
+        void deleteCards(ids)
+        clearSelection()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [deleteCards, clearSelection])
 
   const boards = useWhiteboardStore((s) => s.boards)
   const view = useWhiteboardStore((s) => s.view)
@@ -437,6 +482,32 @@ export function Sidebar() {
           </button>
         </div>
       </div>
+      {/* 多選批量列（#8）：Ctrl/⌘ 點卡片可多選 */}
+      {multiSelected.size > 0 && (
+        <div className="mx-2 mt-1 flex items-center gap-2 rounded-md bg-blue-50 px-2 py-1 text-xs text-blue-700">
+          <span className="flex-1">已選 {multiSelected.size} 張（拖到資料夾／按 Delete）</span>
+          <button
+            type="button"
+            onClick={() => {
+              const ids = [...multiSelected]
+              if (window.confirm(`要刪除選取的 ${ids.length} 張卡片嗎？（會移到垃圾桶）`)) {
+                void deleteCards(ids)
+                clearSelection()
+              }
+            }}
+            className="rounded px-1.5 py-0.5 text-red-600 hover:bg-blue-100"
+          >
+            刪除
+          </button>
+          <button
+            type="button"
+            onClick={clearSelection}
+            className="rounded px-1.5 py-0.5 text-gray-500 hover:bg-blue-100"
+          >
+            取消
+          </button>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto p-2">
         {cards.length === 0 && folders.length === 0 && (
           <p className="px-3 py-8 text-center text-xs text-gray-400">還沒有卡片，點「＋」開始</p>
