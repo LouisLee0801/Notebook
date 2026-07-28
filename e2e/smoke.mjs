@@ -65,6 +65,24 @@ if (!(await page.textContent('.tiptap:not(.title-input) table th'))?.includes('�
   throw new Error('table block failed')
 log('M5: table block inserted and editable')
 
+// #5 表格快捷列（游標在表格內、未選字時出現「＋欄／＋列」）＋右鍵刪除
+await page.click('.tiptap:not(.title-input) table th')
+await page.waitForSelector('.format-bar:has-text("＋欄")')
+const colsBefore = await page.locator('.tiptap:not(.title-input) table tr').first().locator('th,td').count()
+await page.click('.format-bar button:has-text("＋欄")')
+await page.waitForFunction(
+  (n) =>
+    document.querySelector('.tiptap:not(.title-input) table tr')?.querySelectorAll('th,td').length >
+    n,
+  colsBefore,
+)
+log('新: table toolbar ＋欄 adds a column (#5)')
+await page.click('.tiptap:not(.title-input) table th', { button: 'right' })
+await page.waitForSelector('.table-menu:has-text("刪除所選欄")')
+await page.click('.table-menu button:has-text("刪除整個表格")')
+await page.waitForSelector('.tiptap:not(.title-input) table', { state: 'detached' })
+log('新: table right-click menu deletes table (#5)')
+
 // 選字格式工具列（粗體）
 await page.click('.tiptap:not(.title-input) p:has-text("這是內文。")', { clickCount: 3 })
 await page.waitForSelector('.format-bar')
@@ -245,6 +263,19 @@ await page.click('.sticky-node')
 await page.click('button[aria-label="刪除便利貼"]')
 await page.waitForSelector('.sticky-node', { state: 'detached' })
 log('新: sticky delete button removes the note')
+
+// #3 從側邊欄清單刪除便利貼 → 開著的白板即時移除節點
+await page.click('button:has-text("＋ 便利貼")')
+await page.waitForSelector('.sticky-node')
+await page.click('.sticky-node')
+await page.click('.sticky-node .tiptap')
+await page.keyboard.insertText('待刪便利貼A')
+await page.click('.react-flow__pane', { position: { x: 6, y: 6 } })
+await page.waitForSelector('aside >> text=待刪便利貼A')
+await page.hover('aside li:has-text("待刪便利貼A")')
+await page.click('button[aria-label="從清單刪除便利貼"]')
+await page.waitForSelector('.sticky-node', { state: 'detached' })
+log('新: deleting sticky from sidebar clears it live on the board (#3)')
 
 // 連線（#6/#10）：卡片兩側連接點皆為 connectable（source 右、target 左），
 // ConnectionMode.Loose 允許從任一側拉出、落在任一張卡片本體即連線、可多條。

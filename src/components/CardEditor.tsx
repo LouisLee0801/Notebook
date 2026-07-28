@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { BubbleMenu, EditorContent, useEditor } from '@tiptap/react'
 import Placeholder from '@tiptap/extension-placeholder'
 import StarterKit from '@tiptap/starter-kit'
@@ -318,6 +318,32 @@ function TitleFormatBar({ editor }: { editor: Editor }) {
   )
 }
 
+// 游標在表格內時出現的快捷列（#5）：直接點「＋欄 / ＋列」新增
+function TableBar({ editor }: { editor: Editor }) {
+  return (
+    <div className="format-bar" onMouseDown={(e) => e.preventDefault()}>
+      <div className="format-row">
+        <button type="button" className="format-btn format-btn-wide" onClick={() => editor.chain().focus().addColumnAfter().run()}>
+          ＋欄
+        </button>
+        <button type="button" className="format-btn format-btn-wide" onClick={() => editor.chain().focus().addRowAfter().run()}>
+          ＋列
+        </button>
+        <span className="format-sep" />
+        <button type="button" className="format-btn" title="刪除所選欄" onClick={() => editor.chain().focus().deleteColumn().run()}>
+          刪欄
+        </button>
+        <button type="button" className="format-btn" title="刪除所選列" onClick={() => editor.chain().focus().deleteRow().run()}>
+          刪列
+        </button>
+        <button type="button" className="format-btn" title="刪除整個表格" onClick={() => editor.chain().focus().deleteTable().run()}>
+          刪表
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function CardEditor({
   card,
   compact = false,
@@ -444,12 +470,48 @@ export function CardEditor({
     [card.id],
   )
 
+  // 表格右鍵選單（#5）：座標為 null 代表未開啟
+  const [tableMenu, setTableMenu] = useState<{ x: number; y: number } | null>(null)
+
+  const closeTableMenu = () => setTableMenu(null)
+  const runTable = (fn: () => void) => {
+    fn()
+    closeTableMenu()
+  }
+
   return (
     <div className={hideTitle ? '' : 'flex h-full flex-col overflow-y-auto'}>
       {editor && (
         <BubbleMenu editor={editor} tippyOptions={{ duration: 0, maxWidth: 'none' }}>
           <FormatBar editor={editor} />
         </BubbleMenu>
+      )}
+      {/* 游標在表格內、且未選字時，顯示表格快捷列（#5） */}
+      {editor && (
+        <BubbleMenu
+          editor={editor}
+          pluginKey="tableBar"
+          shouldShow={({ editor, state }) => editor.isActive('table') && state.selection.empty}
+          tippyOptions={{ duration: 0, placement: 'top' }}
+        >
+          <TableBar editor={editor} />
+        </BubbleMenu>
+      )}
+      {/* 表格內右鍵：刪除所選欄/列/表（#5） */}
+      {tableMenu && editor && (
+        <>
+          <div className="table-menu-backdrop" onClick={closeTableMenu} onContextMenu={(e) => { e.preventDefault(); closeTableMenu() }} />
+          <div className="table-menu" style={{ left: tableMenu.x, top: tableMenu.y }}>
+            <button type="button" onClick={() => runTable(() => editor.chain().focus().addColumnBefore().run())}>在左邊插入欄</button>
+            <button type="button" onClick={() => runTable(() => editor.chain().focus().addColumnAfter().run())}>在右邊插入欄</button>
+            <button type="button" onClick={() => runTable(() => editor.chain().focus().addRowBefore().run())}>在上面插入列</button>
+            <button type="button" onClick={() => runTable(() => editor.chain().focus().addRowAfter().run())}>在下面插入列</button>
+            <div className="table-menu-sep" />
+            <button type="button" className="is-danger" onClick={() => runTable(() => editor.chain().focus().deleteColumn().run())}>刪除所選欄</button>
+            <button type="button" className="is-danger" onClick={() => runTable(() => editor.chain().focus().deleteRow().run())}>刪除所選列</button>
+            <button type="button" className="is-danger" onClick={() => runTable(() => editor.chain().focus().deleteTable().run())}>刪除整個表格</button>
+          </div>
+        </>
       )}
       <div
         className={
@@ -481,7 +543,15 @@ export function CardEditor({
             <TagChips cardId={card.id} />
           </>
         )}
-        <div className={hideTitle ? 'journal-editor' : 'mt-4'}>
+        <div
+          className={hideTitle ? 'journal-editor' : 'mt-4'}
+          onContextMenu={(e) => {
+            if (editor?.isActive('table')) {
+              e.preventDefault()
+              setTableMenu({ x: e.clientX, y: e.clientY })
+            }
+          }}
+        >
           <EditorContent editor={editor} />
         </div>
         <BacklinksPanel cardId={card.id} />

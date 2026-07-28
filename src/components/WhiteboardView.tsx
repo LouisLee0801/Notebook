@@ -138,8 +138,29 @@ function Canvas({ boardId }: { boardId: string }) {
   const boards = useWhiteboardStore((s) => s.boards)
   const board = boards.find((b) => b.id === boardId)
   const cards = useCardStore((s) => s.cards)
+  const cardsLoaded = useCardStore((s) => s.loaded)
   const createCardInStore = useCardStore((s) => s.createCard)
   const editingCard = cards.find((c) => c.id === editingCardId) ?? null
+  const lastRemovedNoteId = useBoardNotesStore((s) => s.lastRemovedId)
+
+  // #4 從卡片庫刪除卡片後，白板上該卡片的節點即時消失（卡片還原時也會隨之回來）
+  useEffect(() => {
+    if (!cardsLoaded) return
+    const live = new Set(cards.map((c) => c.id))
+    setNodes((nds) => {
+      const next = nds.filter((n) => n.type !== 'card' || live.has((n as CardNodeType).data.cardId))
+      return next.length === nds.length ? nds : next
+    })
+  }, [cards, cardsLoaded, setNodes])
+
+  // #3 從側邊欄清單刪除便利貼後，開著的白板即時移除該便利貼節點
+  useEffect(() => {
+    if (!lastRemovedNoteId) return
+    setNodes((nds) => {
+      const next = nds.filter((n) => n.id !== lastRemovedNoteId)
+      return next.length === nds.length ? nds : next
+    })
+  }, [lastRemovedNoteId, setNodes])
 
   const handleSectionRectChange = useCallback(
     (id: string, rect: { x: number; y: number; width: number; height: number }) => {
@@ -453,7 +474,8 @@ function Canvas({ boardId }: { boardId: string }) {
             if (node.type === 'card') setEditingCardId((node as CardNodeType).data.cardId)
           }}
           connectionMode={ConnectionMode.Loose}
-          connectionRadius={60}
+          // 放大吸附半徑：放開時只要落在卡片本體，就近吸附到該卡片的連接點（#1 不必對準端點）
+          connectionRadius={240}
           zoomOnDoubleClick={false}
           deleteKeyCode={['Backspace', 'Delete']}
           fitView
