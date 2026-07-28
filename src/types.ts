@@ -5,6 +5,7 @@
 export interface Card {
   id: string
   title: string
+  titleHtml?: string | null // 標題格式化 HTML（#3 跨裝置同步）；null = 純文字（用 title）
   content: unknown // TipTap JSON document
   createdAt: number
   updatedAt: number
@@ -114,6 +115,7 @@ export function createEmptyCard(now: number): Card {
   return {
     id: crypto.randomUUID(),
     title: '',
+    titleHtml: null,
     content: { type: 'doc', content: [{ type: 'paragraph' }] },
     createdAt: now,
     updatedAt: now,

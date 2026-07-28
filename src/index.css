@@ -363,6 +363,19 @@
   height: 16px !important;
 }
 
+/* 白板連線標籤（浮動連線用） */
+.board-edge-label {
+  position: absolute;
+  pointer-events: all;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.35rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  font-size: 0.7rem;
+  color: #4b5563;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+}
+
 /* ---- 連結預覽浮窗 ---- */
 
 .link-preview {

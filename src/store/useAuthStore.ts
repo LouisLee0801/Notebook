@@ -9,13 +9,16 @@ interface AuthStore {
   ready: boolean
   session: Session | null
   skipped: boolean
+  recovering: boolean // 使用者點了重設密碼信的連結，需設定新密碼
   error: string | null
   notice: string | null
   init: () => void
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
+  resetPassword: (email: string) => Promise<{ ok: boolean; message: string }>
   changePassword: (newPassword: string) => Promise<{ ok: boolean; message: string }>
+  finishRecovery: () => void
   skip: () => void
   unskip: () => void
 }
@@ -24,6 +27,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   ready: !syncConfigured,
   session: null,
   skipped: localStorage.getItem(SKIP_KEY) === '1',
+  recovering: false,
   error: null,
   notice: null,
 
@@ -36,6 +40,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     supabase.auth.onAuthStateChange((event, session) => {
       const prev = get().session
       set({ session })
+      // 點了重設密碼信連結 → 進入設定新密碼流程
+      if (event === 'PASSWORD_RECOVERY') set({ recovering: true, error: null, notice: null })
       if (session && !prev) void syncEngine.start(session)
       if (!session && prev) syncEngine.stop()
       if (event === 'SIGNED_OUT') set({ notice: null, error: null })
@@ -64,12 +70,23 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     await supabase.auth.signOut()
   },
 
+  resetPassword: async (email) => {
+    if (!email.trim()) return { ok: false, message: '請先輸入 Email' }
+    // 重設連結導回本 App（GitHub Pages 子路徑），點擊後觸發 PASSWORD_RECOVERY
+    const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}`
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
+    if (error) return { ok: false, message: error.message }
+    return { ok: true, message: '重設密碼信已寄出，請到信箱點擊連結後設定新密碼。' }
+  },
+
   changePassword: async (newPassword) => {
     if (newPassword.length < 6) return { ok: false, message: '密碼至少需要 6 個字元' }
     const { error } = await supabase.auth.updateUser({ password: newPassword })
     if (error) return { ok: false, message: error.message }
     return { ok: true, message: '密碼已更新' }
   },
+
+  finishRecovery: () => set({ recovering: false }),
 
   skip: () => {
     localStorage.setItem(SKIP_KEY, '1')

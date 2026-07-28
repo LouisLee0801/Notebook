@@ -158,6 +158,7 @@ await page.click('[aria-label="新增白板"]')
 await page.waitForSelector('.react-flow__pane')
 const dataTransfer = await page.evaluateHandle(() => new DataTransfer())
 await page.dispatchEvent('aside >> text=白板上的卡片', 'dragstart', { dataTransfer })
+await page.waitForTimeout(120) // 讓多選 replace() 的重繪先安定，再放下
 await page.dispatchEvent('.react-flow__pane', 'drop', {
   dataTransfer,
   clientX: 700,
@@ -429,6 +430,16 @@ await page.waitForFunction(() => {
   return f && /我的資料夾\s*1/.test(f.textContent || '')
 })
 log('新: drag card into folder assigns it (#8)')
+
+// #8 多選：Ctrl 點兩張卡片出現多選列，批量刪除
+await page.click('aside button:has-text("關鍵概念X")', { modifiers: ['Control'] })
+await page.click('aside button:has-text("隨手記")', { modifiers: ['Control'] })
+await page.waitForSelector('aside >> text=已選 2 張')
+log('新: ctrl-click multi-selects cards (#8)')
+await page.click('aside .bg-blue-50 button:has-text("刪除")')
+await page.waitForSelector('aside button:has-text("關鍵概念X")', { state: 'detached' })
+await page.waitForSelector('aside button:has-text("隨手記")', { state: 'detached' })
+log('新: batch delete removes selected cards (#8)')
 
 // ---- 清理 ----
 await page.click('aside >> text=卡片庫')

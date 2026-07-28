@@ -22,6 +22,7 @@ create table if not exists public.cards (
   client_id text
 );
 alter table public.cards add column if not exists "folderId" text;
+alter table public.cards add column if not exists "titleHtml" text;
 
 create table if not exists public.folders (
   id text primary key,

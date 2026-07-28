@@ -10,9 +10,14 @@ interface CardStore {
   load: () => Promise<void>
   select: (id: string | null) => void
   createCard: (folderId?: string | null) => Promise<Card>
-  updateCard: (id: string, patch: Partial<Pick<Card, 'title' | 'content'>>) => Promise<void>
+  updateCard: (
+    id: string,
+    patch: Partial<Pick<Card, 'title' | 'titleHtml' | 'content'>>,
+  ) => Promise<void>
   moveCardToFolder: (cardId: string, folderId: string | null) => Promise<void>
+  moveCardsToFolder: (cardIds: string[], folderId: string | null) => Promise<void>
   deleteCard: (id: string) => Promise<void>
+  deleteCards: (ids: string[]) => Promise<void>
 }
 
 export const useCardStore = create<CardStore>((set, get) => ({
@@ -54,9 +59,30 @@ export const useCardStore = create<CardStore>((set, get) => ({
     })
   },
 
+  moveCardsToFolder: async (cardIds, folderId) => {
+    const ids = new Set(cardIds)
+    for (const id of cardIds) await cardRepository.update(id, { folderId })
+    const now = Date.now()
+    set({
+      cards: get()
+        .cards.map((c) => (ids.has(c.id) ? { ...c, folderId, updatedAt: now } : c))
+        .sort((a, b) => b.updatedAt - a.updatedAt),
+    })
+  },
+
   deleteCard: async (id) => {
     await cardRepository.softDelete(id)
     const cards = get().cards.filter((c) => c.id !== id)
     set({ cards, selectedId: get().selectedId === id ? null : get().selectedId })
+  },
+
+  deleteCards: async (ids) => {
+    for (const id of ids) await cardRepository.softDelete(id)
+    const idSet = new Set(ids)
+    const cards = get().cards.filter((c) => !idSet.has(c.id))
+    set({
+      cards,
+      selectedId: get().selectedId && idSet.has(get().selectedId!) ? null : get().selectedId,
+    })
   },
 }))
