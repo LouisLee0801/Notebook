@@ -4,7 +4,6 @@ import Highlight from '@tiptap/extension-highlight'
 import Link from '@tiptap/extension-link'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
-import Image from '@tiptap/extension-image'
 import Table from '@tiptap/extension-table'
 import TableRow from '@tiptap/extension-table-row'
 import TableHeader from '@tiptap/extension-table-header'
@@ -13,6 +12,7 @@ import TextStyle from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import type { AnyExtension } from '@tiptap/core'
 import { CardLinkNode } from './cardLink'
+import { ResizableImage } from './resizableImage'
 import { FileAttachment, MAX_ATTACHMENT_BYTES, type AttachmentAttrs } from './fileAttachment'
 
 // 編輯器與唯讀渲染（白板卡片節點）共用的 schema，
@@ -26,7 +26,7 @@ export const baseExtensions: AnyExtension[] = [
   Link.configure({ openOnClick: false }),
   TaskList,
   TaskItem.configure({ nested: true }),
-  Image.configure({ allowBase64: true }), // 圖片先以 data URL 存本地，接 Supabase 後改 Storage
+  ResizableImage.configure({ allowBase64: true }), // 圖片以 data URL 存本地；可拖曳縮放（#6）
   Table,
   TableRow,
   TableHeader,

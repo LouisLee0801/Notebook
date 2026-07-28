@@ -17,6 +17,11 @@ interface AuthStore {
   signUp: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<{ ok: boolean; message: string }>
+  verifyRecoveryOtp: (
+    email: string,
+    token: string,
+    newPassword: string,
+  ) => Promise<{ ok: boolean; message: string }>
   changePassword: (newPassword: string) => Promise<{ ok: boolean; message: string }>
   finishRecovery: () => void
   skip: () => void
@@ -76,7 +81,21 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}`
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
     if (error) return { ok: false, message: error.message }
-    return { ok: true, message: '重設密碼信已寄出，請到信箱點擊連結後設定新密碼。' }
+    return { ok: true, message: '重設信已寄出。點信中連結，或直接在下方輸入信中的 6 位數驗證碼。' }
+  },
+
+  // 用信中的驗證碼在 App 內直接重設（不必開被防火牆擋住的連結，#2）
+  verifyRecoveryOtp: async (email, token, newPassword) => {
+    if (newPassword.length < 6) return { ok: false, message: '新密碼至少需要 6 個字元' }
+    const { error: vErr } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: token.trim(),
+      type: 'recovery',
+    })
+    if (vErr) return { ok: false, message: `驗證碼錯誤或已過期：${vErr.message}` }
+    const { error: uErr } = await supabase.auth.updateUser({ password: newPassword })
+    if (uErr) return { ok: false, message: uErr.message }
+    return { ok: true, message: '密碼已更新，正在登入…' }
   },
 
   changePassword: async (newPassword) => {

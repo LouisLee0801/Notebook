@@ -8,7 +8,6 @@ import { useFolderStore } from '../store/useFolderStore'
 import { useBoardNotesStore } from '../store/useBoardNotesStore'
 import { useCardSelectionStore } from '../store/useCardSelectionStore'
 import { useAuthStore } from '../store/useAuthStore'
-import { boardItemsRepository } from '../db/whiteboardRepository'
 import { syncConfigured } from '../sync/supabaseClient'
 import { tagColor } from './tagColors'
 
@@ -391,8 +390,9 @@ export function Sidebar() {
                     type="button"
                     aria-label="從清單刪除便利貼"
                     onClick={() => {
+                      // 用 store.remove：同時更新總表並通知開著的白板即時移除該節點（#3）
                       if (window.confirm('要刪除這張便利貼嗎？'))
-                        void boardItemsRepository.removeNote(note.id).then(() => void loadNotes())
+                        void useBoardNotesStore.getState().remove(note.id)
                     }}
                     className="absolute top-1.5 right-1.5 hidden rounded px-1.5 text-xs text-gray-400 hover:bg-gray-300 hover:text-red-500 group-hover:block"
                   >
