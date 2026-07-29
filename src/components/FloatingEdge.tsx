@@ -8,37 +8,21 @@ import {
   type InternalNode,
 } from '@xyflow/react'
 
-// 浮動連線（#5）：線接到兩張卡片「彼此面對的最近側邊」，
-// 不再固定右→左而繞一圈。取兩節點中心連線與節點邊框的交點。
+// 連線（#5 接同邊、本輪修正：精準接到卡片左右兩側的「連接點」）。
+// 卡片的連接點固定在左右兩側的垂直中點；這裡讓線的端點也落在同樣位置，
+// 依兩張卡片的左右相對位置選擇要接哪一側，線就會剛好接在圓點上，不會歪掉。
 
-function getNodeIntersection(node: InternalNode, other: InternalNode) {
-  const w = (node.measured.width ?? 0) / 2
-  const h = (node.measured.height ?? 0) / 2
-  const x2 = node.internals.positionAbsolute.x + w
-  const y2 = node.internals.positionAbsolute.y + h
-  const x1 = other.internals.positionAbsolute.x + (other.measured.width ?? 0) / 2
-  const y1 = other.internals.positionAbsolute.y + (other.measured.height ?? 0) / 2
-  if (w === 0 || h === 0) return { x: x2, y: y2 }
-  const xx1 = (x1 - x2) / (2 * w) - (y1 - y2) / (2 * h)
-  const yy1 = (x1 - x2) / (2 * w) + (y1 - y2) / (2 * h)
-  const a = 1 / (Math.abs(xx1) + Math.abs(yy1) || 1)
-  const xx3 = a * xx1
-  const yy3 = a * yy1
-  return { x: w * (xx3 + yy3) + x2, y: h * (-xx3 + yy3) + y2 }
+function centerX(node: InternalNode): number {
+  return node.internals.positionAbsolute.x + (node.measured.width ?? 0) / 2
 }
 
-function getEdgePosition(node: InternalNode, point: { x: number; y: number }): Position {
-  const nx = Math.round(node.internals.positionAbsolute.x)
-  const ny = Math.round(node.internals.positionAbsolute.y)
+// 回傳指定側邊（左/右）中點座標
+function sidePoint(node: InternalNode, side: Position): { x: number; y: number } {
+  const x = node.internals.positionAbsolute.x
+  const y = node.internals.positionAbsolute.y
   const w = node.measured.width ?? 0
   const h = node.measured.height ?? 0
-  const px = Math.round(point.x)
-  const py = Math.round(point.y)
-  if (px <= nx + 1) return Position.Left
-  if (px >= nx + w - 1) return Position.Right
-  if (py <= ny + 1) return Position.Top
-  if (py >= ny + h - 1) return Position.Bottom
-  return Position.Top
+  return { x: side === Position.Right ? x + w : x, y: y + h / 2 }
 }
 
 export function FloatingEdge({ id, source, target, markerEnd, markerStart, style, label }: EdgeProps) {
@@ -46,13 +30,18 @@ export function FloatingEdge({ id, source, target, markerEnd, markerStart, style
   const targetNode = useInternalNode(target)
   if (!sourceNode || !targetNode) return null
 
-  const sp = getNodeIntersection(sourceNode, targetNode)
-  const tp = getNodeIntersection(targetNode, sourceNode)
+  // 來源在左 → 從右側連接點出、接到目標左側連接點；反之亦然
+  const sourceIsLeft = centerX(sourceNode) <= centerX(targetNode)
+  const sPos = sourceIsLeft ? Position.Right : Position.Left
+  const tPos = sourceIsLeft ? Position.Left : Position.Right
+  const sp = sidePoint(sourceNode, sPos)
+  const tp = sidePoint(targetNode, tPos)
+
   const [path, labelX, labelY] = getBezierPath({
     sourceX: sp.x,
     sourceY: sp.y,
-    sourcePosition: getEdgePosition(sourceNode, sp),
-    targetPosition: getEdgePosition(targetNode, tp),
+    sourcePosition: sPos,
+    targetPosition: tPos,
     targetX: tp.x,
     targetY: tp.y,
   })
