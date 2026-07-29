@@ -84,15 +84,40 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     return { ok: true, message: '重設信已寄出。點信中連結，或直接在下方輸入信中的 6 位數驗證碼。' }
   },
 
-  // 用信中的驗證碼在 App 內直接重設（不必開被防火牆擋住的連結，#2）
-  verifyRecoveryOtp: async (email, token, newPassword) => {
+  // 在 App 內直接重設密碼（不必開被防火牆擋住的連結，#2）。
+  // codeOrLink 可以是：(a) 信中的 6 位數驗證碼，或 (b) 直接把信中的「重設連結」整段複製貼上
+  //（連結不必點開，只要複製；App 會從網址取出 token 驗證）。
+  verifyRecoveryOtp: async (email, codeOrLink, newPassword) => {
     if (newPassword.length < 6) return { ok: false, message: '新密碼至少需要 6 個字元' }
-    const { error: vErr } = await supabase.auth.verifyOtp({
-      email: email.trim(),
-      token: token.trim(),
-      type: 'recovery',
-    })
-    if (vErr) return { ok: false, message: `驗證碼錯誤或已過期：${vErr.message}` }
+    const val = codeOrLink.trim()
+
+    const verify = async () => {
+      if (val.includes('token')) {
+        // 貼上的重設連結：從網址取出 token_hash 與 type（連結不必點開）
+        const parsed = (() => {
+          try {
+            const url = new URL(val)
+            return {
+              tokenHash: url.searchParams.get('token') ?? url.searchParams.get('token_hash'),
+              type: (url.searchParams.get('type') ?? 'recovery') as 'recovery',
+            }
+          } catch {
+            return null
+          }
+        })()
+        if (!parsed?.tokenHash)
+          return { message: '連結格式無法辨識，請確認有複製到整段網址' }
+        return (
+          await supabase.auth.verifyOtp({ token_hash: parsed.tokenHash, type: parsed.type })
+        ).error
+      }
+      return (
+        await supabase.auth.verifyOtp({ email: email.trim(), token: val, type: 'recovery' })
+      ).error
+    }
+
+    const vErr = await verify()
+    if (vErr) return { ok: false, message: `驗證失敗（可能已過期，請重新寄一次）：${vErr.message}` }
     const { error: uErr } = await supabase.auth.updateUser({ password: newPassword })
     if (uErr) return { ok: false, message: uErr.message }
     return { ok: true, message: '密碼已更新，正在登入…' }

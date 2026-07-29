@@ -78,18 +78,20 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         run: () => useWhiteboardStore.getState().openBoard(b.id),
       }))
 
+    // 日誌不是一般卡片：不出現在 Cmd+K 的卡片結果（#7）
+    const nonJournal = cards.filter((c) => !journalCardIds.has(c.id))
     const cardItems: PaletteItem[] = q
-      ? searchCards(cards, q, 12).map((r) => ({
+      ? searchCards(nonJournal, q, 12).map((r) => ({
           key: `card-${r.id}`,
           kind: '卡片',
-          title: journalCardIds.has(r.id) ? `日誌 ${r.title}` : r.title || '未命名卡片',
+          title: r.title || '未命名卡片',
           snippet: r.snippet,
           run: () => openCard(r.id),
         }))
-      : cards.slice(0, 8).map((c) => ({
+      : nonJournal.slice(0, 8).map((c) => ({
           key: `card-${c.id}`,
           kind: '卡片',
-          title: journalCardIds.has(c.id) ? `日誌 ${c.title}` : c.title || '未命名卡片',
+          title: c.title || '未命名卡片',
           run: () => openCard(c.id),
         }))
 

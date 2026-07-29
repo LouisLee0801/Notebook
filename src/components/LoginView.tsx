@@ -55,8 +55,8 @@ export function LoginView() {
         <p className="mt-1 text-sm text-gray-500">
           {mode === 'forgot'
             ? codeSent
-              ? '輸入信中的 6 位數驗證碼與新密碼（若連結被公司防火牆擋住可用這個）'
-              : '輸入註冊 Email，我們會寄送重設密碼信（含連結與驗證碼）'
+              ? '收到信後：把信中的「重設連結」整段複製貼到下面（不必點開），或輸入 6 位數驗證碼，再設定新密碼'
+              : '輸入註冊 Email，我們會寄送重設密碼信'
             : '登入後筆記會同步到雲端，任何電腦都能使用'}
         </p>
 
@@ -84,11 +84,10 @@ export function LoginView() {
             <>
               <input
                 type="text"
-                inputMode="numeric"
                 required
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="信中的驗證碼"
+                placeholder="貼上信中的重設連結，或輸入 6 位數驗證碼"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500"
               />
               <input
