@@ -20,9 +20,11 @@ interface WhiteboardStore {
   openTag: (tagId: string) => void
   openTrash: () => void
   openAccount: () => void
-  createBoard: () => Promise<void>
+  createBoard: (folderId?: string | null) => Promise<void>
   renameBoard: (id: string, name: string) => Promise<void>
   deleteBoard: (id: string) => Promise<void>
+  /** 把白板搬進資料夾（null = 未分類）（#1） */
+  moveBoardsToFolder: (ids: string[], folderId: string | null) => Promise<void>
 }
 
 export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
@@ -40,14 +42,20 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   openTrash: () => set({ view: { type: 'trash' } }),
   openAccount: () => set({ view: { type: 'account' } }),
 
-  createBoard: async () => {
-    const board = await whiteboardRepository.create(`白板 ${get().boards.length + 1}`)
+  createBoard: async (folderId = null) => {
+    const board = await whiteboardRepository.create(`白板 ${get().boards.length + 1}`, folderId)
     set({ boards: [board, ...get().boards], view: { type: 'board', boardId: board.id } })
   },
 
   renameBoard: async (id, name) => {
     await whiteboardRepository.rename(id, name)
     set({ boards: get().boards.map((b) => (b.id === id ? { ...b, name } : b)) })
+  },
+
+  moveBoardsToFolder: async (ids, folderId) => {
+    await whiteboardRepository.setFolder(ids, folderId)
+    const moving = new Set(ids)
+    set({ boards: get().boards.map((b) => (moving.has(b.id) ? { ...b, folderId } : b)) })
   },
 
   deleteBoard: async (id) => {

@@ -14,6 +14,7 @@ import { baseExtensions, fileToAttachment, fileToDataUrl } from '../editor/exten
 import { SlashMenu } from '../editor/slashMenu'
 import { CardLinkSuggestion } from '../editor/cardLink'
 import { cardToMarkdown, downloadMarkdown } from '../editor/markdown'
+import { normalizeUrl } from '../editor/linkUrl'
 import { escapeHtml, getTitleHtml, setTitleHtml } from '../editor/titleFormat'
 import { BacklinksPanel } from './BacklinksPanel'
 import { TagChips } from './TagChips'
@@ -163,13 +164,7 @@ function FormatBar({ editor }: { editor: Editor }) {
         type="button"
         className="format-btn"
         title="加入網址連結"
-        onClick={() => {
-          const prev = editor.getAttributes('link').href as string | undefined
-          const url = window.prompt('連結網址（留空移除）', prev ?? 'https://')
-          if (url === null) return
-          if (url.trim() === '') editor.chain().focus().unsetLink().run()
-          else editor.chain().focus().setLink({ href: url.trim() }).run()
-        }}
+        onClick={() => promptForLink(editor)}
       >
         🔗
       </button>
@@ -318,6 +313,62 @@ function TitleFormatBar({ editor }: { editor: Editor }) {
   )
 }
 
+// ---- 超連結（#5）----
+
+/** 詢問網址並套用到目前選取（空字串＝移除連結） */
+function promptForLink(editor: Editor): void {
+  const prev = editor.getAttributes('link').href as string | undefined
+  const input = window.prompt('連結網址（留空移除連結）', prev ?? 'https://')
+  if (input === null) return
+  const href = normalizeUrl(input)
+  if (!href) {
+    editor.chain().focus().extendMarkRange('link').unsetLink().run()
+    return
+  }
+  // 游標只是停在連結上（沒有反白）時，整段連結一起換掉
+  editor.chain().focus().extendMarkRange('link').setLink({ href }).run()
+}
+
+function openLink(href: string): void {
+  window.open(href, '_blank', 'noopener,noreferrer')
+}
+
+// 游標停在連結上時出現的浮窗：看得到網址，並可開啟/編輯/移除（#5）
+function LinkBar({ editor }: { editor: Editor }) {
+  const href = (editor.getAttributes('link').href as string | undefined) ?? ''
+  return (
+    <div className="format-bar" onMouseDown={(e) => e.preventDefault()}>
+      <div className="format-row">
+        <a
+          className="link-bar-url"
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={href}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          {href}
+        </a>
+        <span className="format-sep" />
+        <button type="button" className="format-btn" title="開啟連結" onClick={() => openLink(href)}>
+          開啟
+        </button>
+        <button type="button" className="format-btn" title="編輯連結" onClick={() => promptForLink(editor)}>
+          編輯
+        </button>
+        <button
+          type="button"
+          className="format-btn"
+          title="移除連結"
+          onClick={() => editor.chain().focus().extendMarkRange('link').unsetLink().run()}
+        >
+          移除
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // 游標在表格內時出現的快捷列（#5）：直接點「＋欄 / ＋列」新增
 function TableBar({ editor }: { editor: Editor }) {
   return (
@@ -431,6 +482,15 @@ export function CardEditor({
       },
       // 貼上/拖曳圖片 → 轉 data URL 插入圖片區塊（features.md 模組 2 P1）
       editorProps: {
+        // #5 Ctrl/⌘＋點擊連結直接開新分頁（單純點擊仍是移動游標，才編得了字）
+        handleClick: (_view, _pos, event) => {
+          if (!(event.metaKey || event.ctrlKey)) return false
+          const href = (event.target as HTMLElement)?.closest('a')?.getAttribute('href')
+          if (!href) return false
+          event.preventDefault()
+          openLink(href)
+          return true
+        },
         handlePaste: (view, event) => {
           const file = Array.from(event.clipboardData?.files ?? []).find((f) =>
             f.type.startsWith('image/'),
@@ -470,14 +530,29 @@ export function CardEditor({
     [card.id],
   )
 
-  // 表格右鍵選單（#5）：座標為 null 代表未開啟
-  const [tableMenu, setTableMenu] = useState<{ x: number; y: number } | null>(null)
+  // 右鍵選單（#5 超連結／表格操作）：座標為 null 代表未開啟
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; inTable: boolean; hasSelection: boolean; linkHref: string | null } | null>(null)
 
-  const closeTableMenu = () => setTableMenu(null)
-  const runTable = (fn: () => void) => {
+  const closeCtxMenu = () => setCtxMenu(null)
+  const runCtx = (fn: () => void) => {
     fn()
-    closeTableMenu()
+    closeCtxMenu()
   }
+
+  // 右鍵：有反白文字、游標在連結上、或在表格內時，改用自訂選單
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      if (!editor) return
+      const { state } = editor
+      const hasSelection = !state.selection.empty
+      const linkHref = (editor.getAttributes('link').href as string | undefined) ?? null
+      const inTable = editor.isActive('table')
+      if (!hasSelection && !linkHref && !inTable) return // 其餘情況保留瀏覽器原生選單
+      e.preventDefault()
+      setCtxMenu({ x: e.clientX, y: e.clientY, inTable, hasSelection, linkHref })
+    },
+    [editor],
+  )
 
   return (
     <div className={hideTitle ? '' : 'flex h-full flex-col overflow-y-auto'}>
@@ -486,30 +561,57 @@ export function CardEditor({
           <FormatBar editor={editor} />
         </BubbleMenu>
       )}
+      {/* 游標停在連結上：顯示網址與開啟/編輯/移除（#5） */}
+      {editor && (
+        <BubbleMenu
+          editor={editor}
+          pluginKey="linkBar"
+          shouldShow={({ editor, state }) => editor.isActive('link') && state.selection.empty}
+          tippyOptions={{ duration: 0, placement: 'bottom', maxWidth: 'none' }}
+        >
+          <LinkBar editor={editor} />
+        </BubbleMenu>
+      )}
       {/* 游標在表格內、且未選字時，顯示表格快捷列（#5） */}
       {editor && (
         <BubbleMenu
           editor={editor}
           pluginKey="tableBar"
-          shouldShow={({ editor, state }) => editor.isActive('table') && state.selection.empty}
+          shouldShow={({ editor, state }) => editor.isActive('table') && state.selection.empty && !editor.isActive('link')}
           tippyOptions={{ duration: 0, placement: 'top' }}
         >
           <TableBar editor={editor} />
         </BubbleMenu>
       )}
-      {/* 表格內右鍵：刪除所選欄/列/表（#5） */}
-      {tableMenu && editor && (
+      {/* 右鍵選單：超連結（#5）＋表格操作 */}
+      {ctxMenu && editor && (
         <>
-          <div className="table-menu-backdrop" onClick={closeTableMenu} onContextMenu={(e) => { e.preventDefault(); closeTableMenu() }} />
-          <div className="table-menu" style={{ left: tableMenu.x, top: tableMenu.y }}>
-            <button type="button" onClick={() => runTable(() => editor.chain().focus().addColumnBefore().run())}>在左邊插入欄</button>
-            <button type="button" onClick={() => runTable(() => editor.chain().focus().addColumnAfter().run())}>在右邊插入欄</button>
-            <button type="button" onClick={() => runTable(() => editor.chain().focus().addRowBefore().run())}>在上面插入列</button>
-            <button type="button" onClick={() => runTable(() => editor.chain().focus().addRowAfter().run())}>在下面插入列</button>
-            <div className="table-menu-sep" />
-            <button type="button" className="is-danger" onClick={() => runTable(() => editor.chain().focus().deleteColumn().run())}>刪除所選欄</button>
-            <button type="button" className="is-danger" onClick={() => runTable(() => editor.chain().focus().deleteRow().run())}>刪除所選列</button>
-            <button type="button" className="is-danger" onClick={() => runTable(() => editor.chain().focus().deleteTable().run())}>刪除整個表格</button>
+          <div className="table-menu-backdrop" onClick={closeCtxMenu} onContextMenu={(e) => { e.preventDefault(); closeCtxMenu() }} />
+          <div className="table-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }}>
+            {ctxMenu.linkHref && (
+              <>
+                <button type="button" onClick={() => runCtx(() => openLink(ctxMenu.linkHref!))}>🔗 開啟連結</button>
+                <button type="button" onClick={() => runCtx(() => promptForLink(editor))}>編輯連結網址</button>
+                <button type="button" onClick={() => runCtx(() => void navigator.clipboard?.writeText(ctxMenu.linkHref!))}>複製連結網址</button>
+                <button type="button" onClick={() => runCtx(() => editor.chain().focus().extendMarkRange('link').unsetLink().run())}>移除連結</button>
+              </>
+            )}
+            {!ctxMenu.linkHref && ctxMenu.hasSelection && (
+              <button type="button" onClick={() => runCtx(() => promptForLink(editor))}>🔗 插入超連結</button>
+            )}
+            {ctxMenu.inTable && (
+              <>
+                {(ctxMenu.linkHref || ctxMenu.hasSelection) && <div className="table-menu-sep" />}
+                <button type="button" onClick={() => runCtx(() => editor.chain().focus().addColumnBefore().run())}>在左邊插入欄</button>
+                <button type="button" onClick={() => runCtx(() => editor.chain().focus().addColumnAfter().run())}>在右邊插入欄</button>
+                <button type="button" onClick={() => runCtx(() => editor.chain().focus().addRowBefore().run())}>在上面插入列</button>
+                <button type="button" onClick={() => runCtx(() => editor.chain().focus().addRowAfter().run())}>在下面插入列</button>
+                <div className="table-menu-sep" />
+                <button type="button" className="is-danger" onClick={() => runCtx(() => editor.chain().focus().deleteColumn().run())}>刪除所選欄</button>
+                <button type="button" className="is-danger" onClick={() => runCtx(() => editor.chain().focus().deleteRow().run())}>刪除所選列</button>
+                <button type="button" className="is-danger" onClick={() => runCtx(() => editor.chain().focus().deleteTable().run())}>刪除整個表格</button>
+              </>
+            )}
           </div>
         </>
       )}
@@ -545,12 +647,7 @@ export function CardEditor({
         )}
         <div
           className={hideTitle ? 'journal-editor' : 'mt-4'}
-          onContextMenu={(e) => {
-            if (editor?.isActive('table')) {
-              e.preventDefault()
-              setTableMenu({ x: e.clientX, y: e.clientY })
-            }
-          }}
+          onContextMenu={handleContextMenu}
         >
           <EditorContent editor={editor} />
         </div>

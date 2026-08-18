@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Card, Folder } from '../types'
+import type { Card, Folder, Whiteboard } from '../types'
 import { useCardStore } from '../store/useCardStore'
 import { useWhiteboardStore } from '../store/useWhiteboardStore'
 import { useJournalStore } from '../store/useJournalStore'
@@ -13,6 +13,7 @@ import { tagColor } from './tagColors'
 
 const CARD_DND = 'application/x-notebook-card' // 單張（白板上板用）
 const CARD_MULTI_DND = 'application/x-notebook-cards' // 多張（資料夾批量移動用，逗號分隔）
+const BOARD_DND = 'application/x-notebook-board' // 白板（拖進白板資料夾用，#1）
 
 // 便利貼內文現以 HTML 儲存；側邊欄預覽需去掉標籤只留純文字
 function stripHtml(html: string): string {
@@ -247,6 +248,150 @@ function FolderGroup({ folder, cards }: { folder: Folder; cards: Card[] }) {
   )
 }
 
+// ---- 白板資料夾（#1）----
+
+// 單一白板列（可拖曳到資料夾）
+function BoardItem({ board }: { board: Whiteboard }) {
+  const view = useWhiteboardStore((s) => s.view)
+  const openBoard = useWhiteboardStore((s) => s.openBoard)
+  const renameBoard = useWhiteboardStore((s) => s.renameBoard)
+  const deleteBoard = useWhiteboardStore((s) => s.deleteBoard)
+
+  return (
+    <li className="group relative">
+      <button
+        type="button"
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData(BOARD_DND, board.id)
+          e.dataTransfer.effectAllowed = 'move'
+        }}
+        onClick={() => openBoard(board.id)}
+        onDoubleClick={() => {
+          const name = window.prompt('白板名稱', board.name)
+          if (name?.trim()) void renameBoard(board.id, name.trim())
+        }}
+        className={`block w-full cursor-grab truncate rounded-md px-3 py-1.5 pr-7 text-left text-sm text-gray-800 hover:bg-gray-200 ${
+          view.type === 'board' && view.boardId === board.id ? 'bg-gray-200 font-medium' : ''
+        }`}
+      >
+        🗂 {board.name}
+      </button>
+      <button
+        type="button"
+        aria-label="刪除白板"
+        onClick={() => {
+          if (window.confirm(`要刪除白板「${board.name}」嗎？卡片會保留在卡片庫。`))
+            void deleteBoard(board.id)
+        }}
+        className="absolute top-1.5 right-1.5 hidden rounded px-1.5 text-xs text-gray-400 hover:bg-gray-300 hover:text-gray-700 group-hover:block"
+      >
+        ✕
+      </button>
+    </li>
+  )
+}
+
+// 可拖入白板的容器
+function BoardDropZone({
+  folderId,
+  className = '',
+  children,
+}: {
+  folderId: string | null
+  className?: string
+  children: React.ReactNode
+}) {
+  const [over, setOver] = useState(false)
+  const moveBoardsToFolder = useWhiteboardStore((s) => s.moveBoardsToFolder)
+
+  return (
+    <div
+      onDragOver={(e) => {
+        if (!e.dataTransfer.types.includes(BOARD_DND)) return
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'move'
+        setOver(true)
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        const id = e.dataTransfer.getData(BOARD_DND)
+        setOver(false)
+        if (!id) return
+        e.preventDefault()
+        void moveBoardsToFolder([id], folderId)
+      }}
+      className={`${className} ${over ? 'rounded-md bg-blue-50 ring-1 ring-blue-300' : ''}`}
+    >
+      {children}
+    </div>
+  )
+}
+
+function BoardFolderGroup({ folder, boards }: { folder: Folder; boards: Whiteboard[] }) {
+  const [open, setOpen] = useState(true)
+  const renameFolder = useFolderStore((s) => s.renameFolder)
+  const deleteFolder = useFolderStore((s) => s.deleteFolder)
+  const createBoard = useWhiteboardStore((s) => s.createBoard)
+
+  return (
+    <BoardDropZone folderId={folder.id} className="mb-0.5">
+      <div className="group flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-gray-100">
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="flex min-w-0 flex-1 items-center gap-1 text-left text-sm text-gray-700"
+        >
+          <span className="w-3 shrink-0 text-xs text-gray-400">{open ? '▾' : '▸'}</span>
+          <span>📁</span>
+          <span className="truncate">{folder.name}</span>
+          <span className="text-xs text-gray-400">{boards.length}</span>
+        </button>
+        <button
+          type="button"
+          aria-label={`在 ${folder.name} 新增白板`}
+          onClick={() => void createBoard(folder.id)}
+          className="hidden shrink-0 rounded px-1 text-xs text-gray-400 hover:bg-gray-200 hover:text-gray-700 group-hover:block"
+        >
+          ＋
+        </button>
+        <button
+          type="button"
+          aria-label={`重新命名白板資料夾 ${folder.name}`}
+          onClick={() => {
+            const name = window.prompt('資料夾名稱', folder.name)
+            if (name?.trim()) void renameFolder(folder.id, name.trim(), 'board')
+          }}
+          className="hidden shrink-0 rounded px-1 text-xs text-gray-400 hover:bg-gray-200 hover:text-gray-700 group-hover:block"
+        >
+          ✎
+        </button>
+        <button
+          type="button"
+          aria-label={`刪除白板資料夾 ${folder.name}`}
+          onClick={() => {
+            if (window.confirm(`刪除資料夾「${folder.name}」？裡面的白板會移到未分類。`))
+              void deleteFolder(folder.id, 'board')
+          }}
+          className="hidden shrink-0 rounded px-1 text-xs text-gray-400 hover:bg-gray-200 hover:text-red-500 group-hover:block"
+        >
+          ✕
+        </button>
+      </div>
+      {open && (
+        <ul className="ml-3 border-l border-gray-200 pl-1">
+          {boards.length === 0 && (
+            <li className="px-2 py-1 text-[11px] text-gray-300">拖曳白板到這裡</li>
+          )}
+          {boards.map((board) => (
+            <BoardItem key={board.id} board={board} />
+          ))}
+        </ul>
+      )}
+    </BoardDropZone>
+  )
+}
+
 export function Sidebar() {
   const allCards = useCardStore((s) => s.cards)
   const journalCardIds = useJournalStore((s) => s.journalCardIds)
@@ -292,13 +437,16 @@ export function Sidebar() {
   const tags = useTagStore((s) => s.tags)
   const deleteTag = useTagStore((s) => s.deleteTag)
   const createBoard = useWhiteboardStore((s) => s.createBoard)
-  const renameBoard = useWhiteboardStore((s) => s.renameBoard)
-  const deleteBoard = useWhiteboardStore((s) => s.deleteBoard)
 
   // 切換檢視時刷新便利貼總表（離開白板後即反映最新編輯）
   useEffect(() => {
     void loadNotes()
   }, [view, loadNotes])
+
+  const boardFolders = useFolderStore((s) => s.boardFolders)
+  const boardFolderIds = new Set(boardFolders.map((f) => f.id))
+  // 沒有資料夾、或資料夾已被刪掉的白板都算未分類
+  const unfiledBoards = boards.filter((b) => !b.folderId || !boardFolderIds.has(b.folderId))
 
   const unfiled = cards.filter((c) => !c.folderId)
   const cardsOf = (folderId: string) => cards.filter((c) => c.folderId === folderId)
@@ -320,49 +468,53 @@ export function Sidebar() {
         📅 日誌
       </button>
 
-      {/* 白板列表 */}
+      {/* 白板列表（含資料夾，#1）*/}
       <div className="flex items-center justify-between px-4 pt-3 pb-1">
         <h2 className="text-xs font-semibold tracking-wide text-gray-500">白板</h2>
-        <button
-          type="button"
-          aria-label="新增白板"
-          onClick={() => void createBoard()}
-          className="rounded px-1.5 text-sm text-gray-500 hover:bg-gray-200"
-        >
-          ＋
-        </button>
+        <div className="flex items-center gap-0.5">
+          <button
+            type="button"
+            aria-label="新增白板資料夾"
+            title="新增白板資料夾"
+            onClick={() => {
+              const name = window.prompt('白板資料夾名稱')
+              if (name?.trim()) void createFolder(name.trim(), 'board')
+            }}
+            className="rounded px-1.5 text-sm text-gray-500 hover:bg-gray-200"
+          >
+            📁
+          </button>
+          <button
+            type="button"
+            aria-label="新增白板"
+            onClick={() => void createBoard()}
+            className="rounded px-1.5 text-sm text-gray-500 hover:bg-gray-200"
+          >
+            ＋
+          </button>
+        </div>
       </div>
-      <ul className="max-h-48 overflow-y-auto px-2">
-        {boards.length === 0 && <li className="px-3 py-2 text-xs text-gray-400">還沒有白板</li>}
-        {boards.map((board) => (
-          <li key={board.id} className="group relative">
-            <button
-              type="button"
-              onClick={() => openBoard(board.id)}
-              onDoubleClick={() => {
-                const name = window.prompt('白板名稱', board.name)
-                if (name?.trim()) void renameBoard(board.id, name.trim())
-              }}
-              className={`block w-full truncate rounded-md px-3 py-1.5 pr-7 text-left text-sm text-gray-800 hover:bg-gray-200 ${
-                view.type === 'board' && view.boardId === board.id ? 'bg-gray-200 font-medium' : ''
-              }`}
-            >
-              🗂 {board.name}
-            </button>
-            <button
-              type="button"
-              aria-label="刪除白板"
-              onClick={() => {
-                if (window.confirm(`要刪除白板「${board.name}」嗎？卡片會保留在卡片庫。`))
-                  void deleteBoard(board.id)
-              }}
-              className="absolute top-1.5 right-1.5 hidden rounded px-1.5 text-xs text-gray-400 hover:bg-gray-300 hover:text-gray-700 group-hover:block"
-            >
-              ✕
-            </button>
-          </li>
+      <div className="max-h-64 overflow-y-auto px-2">
+        {boardFolders.map((folder) => (
+          <BoardFolderGroup
+            key={folder.id}
+            folder={folder}
+            boards={boards.filter((b) => b.folderId === folder.id)}
+          />
         ))}
-      </ul>
+        {/* 未分類：拖到這裡即可移出資料夾 */}
+        <BoardDropZone folderId={null}>
+          <ul>
+            {boards.length === 0 && <li className="px-3 py-2 text-xs text-gray-400">還沒有白板</li>}
+            {unfiledBoards.map((board) => (
+              <BoardItem key={board.id} board={board} />
+            ))}
+            {boardFolders.length > 0 && unfiledBoards.length === 0 && boards.length > 0 && (
+              <li className="px-3 py-1 text-[11px] text-gray-300">（未分類的白板會列在這裡）</li>
+            )}
+          </ul>
+        </BoardDropZone>
+      </div>
 
       {/* 便利貼總表（#2）：跨白板列出，點擊開啟所在白板 */}
       {notes.length > 0 && (
@@ -462,7 +614,7 @@ export function Sidebar() {
             title="新增資料夾"
             onClick={() => {
               const name = window.prompt('資料夾名稱')
-              if (name?.trim()) void createFolder(name.trim())
+              if (name?.trim()) void createFolder(name.trim(), 'card')
             }}
             className="rounded px-1.5 text-sm text-gray-500 hover:bg-gray-200"
           >

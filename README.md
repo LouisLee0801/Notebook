@@ -31,6 +31,7 @@ npm run test     # Vitest 單元測試
 npm run lint     # ESLint
 npm run build    # 型別檢查 + 產出 dist/
 npm run e2e      # 核心流程冒煙測試（需先啟動 dev server）
+npm run e2e:fixes # 使用者回報項目的迴歸測試（需先啟動 dev server）
 ```
 
 ### 進度
@@ -46,12 +47,17 @@ npm run e2e      # 核心流程冒煙測試（需先啟動 dev server）
 - [x] **M0／同步**：Supabase 帳號（Email＋密碼）＋雲端同步——outbox 佇列推送（離線累積、上線補傳、單筆失敗不卡整體）、last-write-wins 合併、Realtime 跨裝置即時套用、首次登入自動上傳既有本地資料；也可「先離線使用」
 - [x] **標籤顏色**：每個標籤可挑 8 色，卡片標籤、側邊欄、標籤頁一致顯示
 - [x] **PWA／手機**：可「加到主畫面」像 App 一樣使用（獨立視窗、離線可開）
-- [ ] 其餘 P1（上傳檔案附件、卡片資料夾、分割視窗…）
+- [x] **白板與編輯器體驗優化 8 項**：白板資料夾（拖曳歸納）、收合卡片仍可調寬度、收合後連線跟著卡片走、白板「上一步／重做」（Ctrl/⌘+Z）、超連結（右鍵插入／浮窗看網址／Ctrl+點擊開啟／自動補 https）、框選模式＋多選對齊與等距分佈、清單 Backspace 退回上一層、表格後可繼續打字
+- [ ] 其餘 P1（上傳檔案附件、分割視窗…）
 
 ## 雲端同步設定（一次性）
 
 1. 開 [Supabase Dashboard](https://supabase.com/dashboard) → 您的專案 → **SQL Editor** → 貼上 [`supabase/schema.sql`](supabase/schema.sql) 整份執行（建表＋Row Level Security＋Realtime）。
-2. **若之前已建過資料表**，只要再跑一次增量遷移 [`supabase/migrations/001_tag_color.sql`](supabase/migrations/001_tag_color.sql)（新增標籤顏色欄位；重跑整份 `schema.sql` 也可，皆安全）。
+2. **若之前已建過資料表**，把 [`supabase/migrations/`](supabase/migrations) 裡尚未跑過的遷移依編號執行一次（重跑整份 `schema.sql` 也可，皆安全）：
+   - `001_tag_color.sql` 標籤顏色
+   - `002_folders.sql` 卡片資料夾
+   - `003_title_html.sql` 標題格式
+   - `004_board_folders.sql` 白板資料夾
 3. （可選）**Authentication → Sign In / Up → Email**：關閉 *Confirm email* 可以省去註冊確認信步驟。
 4. 打開 app → 註冊帳號 → 登入。既有的本地筆記會自動上傳；之後任何電腦登入同帳號即可同步。
 

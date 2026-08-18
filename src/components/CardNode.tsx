@@ -1,6 +1,7 @@
-import { memo, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Handle,
+  NodeResizeControl,
   NodeResizer,
   NodeToolbar,
   Position,
@@ -12,10 +13,12 @@ import { generateHTML, type JSONContent } from '@tiptap/core'
 import { baseExtensions } from '../editor/extensions'
 import { titleHtmlOrNull } from '../editor/titleFormat'
 import { useCardStore } from '../store/useCardStore'
+import { useBoardHistoryStore } from '../store/useBoardHistoryStore'
 import { boardItemsRepository } from '../db/whiteboardRepository'
 
 export type CardNodeType = Node<
-  { cardId: string; color: string | null; autoHeight?: boolean },
+  // expandedHeight：收合前的高度，展開時原樣還原（#3）
+  { cardId: string; color: string | null; autoHeight?: boolean; expandedHeight?: number },
   'card'
 >
 
@@ -49,8 +52,74 @@ export const CARD_COLORS: { key: string | null; label: string; bg: string; borde
 
 export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps<CardNodeType>) {
   const card = useCardStore((s) => s.cards.find((c) => c.id === data.cardId))
-  const { updateNodeData, deleteElements } = useReactFlow()
+  const { updateNodeData, updateNode, getNode, deleteElements } = useReactFlow()
   const [collapsed, setCollapsed] = useState(() => loadCollapsed(id))
+  const pushHistory = useBoardHistoryStore((s) => s.push)
+
+  /** 縮放與換色也要能「上一步」（#4） */
+  const applySize = useCallback(
+    (rect: { x: number; y: number; width: number; height: number }) => {
+      updateNode(id, {
+        position: { x: rect.x, y: rect.y },
+        width: rect.width,
+        height: rect.height || undefined,
+      })
+      updateNodeData(id, { autoHeight: !rect.height, expandedHeight: rect.height || undefined })
+      void boardItemsRepository.resizeInstance(id, rect)
+    },
+    [id, updateNode, updateNodeData],
+  )
+
+  const pushResize = useCallback(
+    (before: { x: number; y: number; width: number; height: number }, after: { x: number; y: number; width: number; height: number }) => {
+      pushHistory({
+        label: '調整卡片大小',
+        undo: () => applySize(before),
+        redo: () => applySize(after),
+      })
+    },
+    [applySize, pushHistory],
+  )
+
+  /** 縮放前的位置與尺寸（用來記錄上一步） */
+  const sizeBefore = useCallback(() => {
+    const node = getNode(id)
+    return {
+      x: node?.position.x ?? 0,
+      y: node?.position.y ?? 0,
+      width: node?.width ?? node?.measured?.width ?? 280,
+      height: node?.height ?? 0,
+    }
+  }, [getNode, id])
+
+  // #3 收合時把節點高度交還給「依內容自動」，否則 React Flow 仍以展開時的高度
+  // 計算連接點，連線就會接到卡片下方的空白處。展開時再還原原本的高度。
+  const applyCollapsedHeight = useCallback(
+    (isCollapsed: boolean) => {
+      const node = getNode(id)
+      if (!node) return
+      if (isCollapsed) {
+        const height = node.height ?? node.measured?.height
+        if (node.height) updateNodeData(id, { expandedHeight: node.height })
+        else if (height) updateNodeData(id, { expandedHeight: undefined })
+        updateNode(id, { height: undefined })
+      } else {
+        const restored = (getNode(id)?.data as CardNodeType['data'] | undefined)?.expandedHeight
+        updateNode(id, { height: restored })
+      }
+    },
+    [getNode, id, updateNode, updateNodeData],
+  )
+
+  const resizeBefore = useRef({ x: 0, y: 0, width: 280, height: 0 })
+
+  // 開啟白板時就是收合狀態的卡片，也要套用一次（收合狀態記在 localStorage）
+  const appliedOnMount = useRef(false)
+  useEffect(() => {
+    if (appliedOnMount.current || !collapsed) return
+    appliedOnMount.current = true
+    applyCollapsedHeight(true)
+  }, [collapsed, applyCollapsedHeight])
 
   const html = useMemo(() => {
     if (!card) return ''
@@ -64,12 +133,35 @@ export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps
   const color = CARD_COLORS.find((c) => c.key === data.color) ?? CARD_COLORS[0]
 
   const toggleCollapse = () => {
-    setCollapsed((c) => {
-      const next = !c
-      saveCollapsed(id, next)
-      return next
-    })
+    const next = !collapsed
+    setCollapsed(next)
+    saveCollapsed(id, next)
+    applyCollapsedHeight(next)
   }
+
+  /** 收合時只調寬度：位置與寬度存檔，高度沿用收合前的值（#2） */
+  const persistWidth = useCallback(
+    (before: { x: number; y: number; width: number; height: number }, params: { x: number; y: number; width: number }) => {
+      const stored = (getNode(id)?.data as CardNodeType['data'] | undefined)?.expandedHeight ?? 0
+      const after = { x: params.x, y: params.y, width: params.width, height: stored }
+      updateNode(id, { height: undefined })
+      void boardItemsRepository.resizeInstance(id, after)
+      if (before.width !== after.width || before.x !== after.x) {
+        pushHistory({
+          label: '調整卡片寬度',
+          undo: () => {
+            updateNode(id, { position: { x: before.x, y: before.y }, width: before.width, height: undefined })
+            void boardItemsRepository.resizeInstance(id, before)
+          },
+          redo: () => {
+            updateNode(id, { position: { x: after.x, y: after.y }, width: after.width, height: undefined })
+            void boardItemsRepository.resizeInstance(id, after)
+          },
+        })
+      }
+    },
+    [getNode, id, pushHistory, updateNode],
+  )
 
   return (
     <>
@@ -82,8 +174,18 @@ export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps
               title={c.label}
               aria-label={`卡片顏色 ${c.label}`}
               onClick={() => {
-                void boardItemsRepository.setInstanceColor(id, c.key)
-                updateNodeData(id, { color: c.key })
+                const before = data.color
+                if (before === c.key) return
+                const setColor = (color: string | null) => {
+                  void boardItemsRepository.setInstanceColor(id, color)
+                  updateNodeData(id, { color })
+                }
+                setColor(c.key)
+                pushHistory({
+                  label: '換卡片顏色',
+                  undo: () => setColor(before),
+                  redo: () => setColor(c.key),
+                })
               }}
               style={{ background: c.bg, borderColor: c.border }}
               className={`card-color-swatch ${data.color === c.key ? 'is-active' : ''}`}
@@ -104,24 +206,45 @@ export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps
           </button>
         </div>
       </NodeToolbar>
-      {/* 折疊時鎖高度（只露標題）；展開時才可自由縮放 */}
-      <NodeResizer
-        isVisible={selected && !collapsed}
-        minWidth={160}
-        minHeight={60}
-        lineClassName="!border-blue-400"
-        handleClassName="!bg-blue-400"
-        onResizeEnd={(_, params) => {
-          // 手動調過大小後就以固定高度顯示（內文改為填滿並可捲動，不再套用自動高度上限）
-          updateNodeData(id, { autoHeight: false })
-          void boardItemsRepository.resizeInstance(id, {
-            x: params.x,
-            y: params.y,
-            width: params.width,
-            height: params.height,
-          })
-        }}
-      />
+      {/* 展開時可自由縮放；收合時只給左右把手調寬度（#2，高度維持只露標題） */}
+      {collapsed ? (
+        selected && (
+          <>
+            <NodeResizeControl
+              position="left"
+              minWidth={160}
+              className="card-width-control"
+              onResizeStart={() => { resizeBefore.current = sizeBefore() }}
+              onResizeEnd={(_, params) => persistWidth(resizeBefore.current, params)}
+            />
+            <NodeResizeControl
+              position="right"
+              minWidth={160}
+              className="card-width-control"
+              onResizeStart={() => { resizeBefore.current = sizeBefore() }}
+              onResizeEnd={(_, params) => persistWidth(resizeBefore.current, params)}
+            />
+          </>
+        )
+      ) : (
+        <NodeResizer
+          isVisible={selected}
+          minWidth={160}
+          minHeight={60}
+          lineClassName="!border-blue-400"
+          handleClassName="!bg-blue-400"
+          onResizeStart={() => {
+            resizeBefore.current = sizeBefore()
+          }}
+          onResizeEnd={(_, params) => {
+            // 手動調過大小後就以固定高度顯示（內文改為填滿並可捲動，不再套用自動高度上限）
+            const after = { x: params.x, y: params.y, width: params.width, height: params.height }
+            updateNodeData(id, { autoHeight: false, expandedHeight: params.height })
+            void boardItemsRepository.resizeInstance(id, after)
+            pushResize(resizeBefore.current, after)
+          }}
+        />
+      )}
       <Handle type="target" position={Position.Left} className="card-node-handle" />
       <div
         className={`card-node ${collapsed ? 'is-collapsed' : ''} ${

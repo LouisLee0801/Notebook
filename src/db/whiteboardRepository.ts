@@ -6,16 +6,24 @@ export const whiteboardRepository = {
     return db.whiteboards.orderBy('updatedAt').reverse().toArray()
   },
 
-  async create(name: string, now = Date.now()): Promise<Whiteboard> {
+  async create(name: string, folderId: string | null = null, now = Date.now()): Promise<Whiteboard> {
     const board: Whiteboard = {
       id: crypto.randomUUID(),
       name,
       parentId: null,
       createdAt: now,
       updatedAt: now,
+      folderId,
     }
     await db.whiteboards.add(board)
     return board
+  },
+
+  /** 把白板搬進資料夾（null = 未分類）（#1） */
+  async setFolder(ids: string[], folderId: string | null, now = Date.now()): Promise<void> {
+    await db.transaction('rw', db.whiteboards, async () => {
+      for (const id of ids) await db.whiteboards.update(id, { folderId, updatedAt: now })
+    })
   },
 
   async rename(id: string, name: string, now = Date.now()): Promise<void> {
@@ -97,6 +105,24 @@ export const boardItemsRepository = {
 
   async setInstanceColor(id: string, color: string | null): Promise<void> {
     await db.cardInstances.update(id, { color })
+  },
+
+  // ---- 還原用（#4 上一步）：以原本的 id 寫回，重做時也是同一筆 ----
+
+  async putInstance(instance: CardInstance): Promise<void> {
+    await db.cardInstances.put(instance)
+  },
+
+  async putEdge(edge: BoardEdge): Promise<void> {
+    await db.boardEdges.put(edge)
+  },
+
+  async putSection(section: Section): Promise<void> {
+    await db.sections.put(section)
+  },
+
+  async putNote(note: BoardNote): Promise<void> {
+    await db.boardNotes.put(note)
   },
 
   async addEdge(edge: BoardEdge): Promise<void> {

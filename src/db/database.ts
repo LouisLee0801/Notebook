@@ -110,3 +110,18 @@ db.version(7).stores({
   folders: 'id, updatedAt, name',
   outbox: '++seq',
 })
+
+db.version(8).stores({
+  cards: 'id, updatedAt, createdAt, deletedAt, folderId',
+  whiteboards: 'id, updatedAt, name, folderId',
+  cardInstances: 'id, whiteboardId, cardId',
+  boardEdges: 'id, whiteboardId, fromInstanceId, toInstanceId',
+  cardLinks: '[fromCardId+toCardId], fromCardId, toCardId',
+  journal: 'date, cardId',
+  tags: 'id, name',
+  cardTags: '[cardId+tagId], cardId, tagId',
+  sections: 'id, whiteboardId',
+  boardNotes: 'id, whiteboardId',
+  folders: 'id, updatedAt, name, kind',
+  outbox: '++seq',
+})

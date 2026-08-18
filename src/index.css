@@ -818,3 +818,90 @@
   font-size: 0.8rem;
   color: #9ca3af;
 }
+
+/* ---- 連結浮窗（#5）---- */
+
+.link-bar-url {
+  max-width: 22rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 0.35rem;
+  font-size: 0.75rem;
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+/* 白板卡片預覽裡的連結可直接點開 */
+.card-node-body a {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* ---- 收合卡片的左右寬度把手（#2）---- */
+
+.card-width-control.react-flow__resize-control.handle {
+  width: 6px;
+  height: 34px;
+  border: none;
+  border-radius: 3px;
+  background: #60a5fa;
+  opacity: 0.9;
+}
+
+.card-width-control.react-flow__resize-control.left.handle {
+  transform: translate(-50%, -50%);
+  cursor: ew-resize;
+}
+
+.card-width-control.react-flow__resize-control.right.handle {
+  transform: translate(-50%, -50%);
+  cursor: ew-resize;
+}
+
+/* ---- 多選對齊工具列（#6）---- */
+
+.align-toolbar {
+  position: absolute;
+  top: 3.4rem;
+  left: 0.75rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.5rem;
+  background: rgb(255 255 255 / 0.95);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.1);
+  backdrop-filter: blur(4px);
+}
+
+.align-toolbar-label {
+  margin-right: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.align-toolbar button {
+  min-width: 1.6rem;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  color: #374151;
+  border-radius: 0.3rem;
+  cursor: pointer;
+}
+
+.align-toolbar button:hover {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.align-toolbar-sep {
+  width: 1px;
+  height: 1rem;
+  margin: 0 0.2rem;
+  background: #e5e7eb;
+}

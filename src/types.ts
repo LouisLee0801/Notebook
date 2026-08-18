@@ -14,10 +14,14 @@ export interface Card {
   folderId?: string | null // 所屬資料夾（#8），null = 未分類
 }
 
-// 卡片資料夾（#8）：卡片清單的分類容器
+// 資料夾：卡片清單（kind='card'）與白板清單（kind='board'）共用同一張表，
+// 以 kind 區分屬於哪一區（舊資料沒有 kind，一律視為卡片資料夾）。
+export type FolderKind = 'card' | 'board'
+
 export interface Folder {
   id: string
   name: string
+  kind?: FolderKind
   createdAt: number
   updatedAt: number
 }
@@ -29,6 +33,7 @@ export interface Whiteboard {
   parentId: string | null
   createdAt: number
   updatedAt: number
+  folderId?: string | null // 所屬白板資料夾（#1），null = 未分類
 }
 
 // 卡片「出現在」白板上的實例（多對多 + 空間資訊）

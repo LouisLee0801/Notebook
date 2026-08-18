@@ -32,6 +32,8 @@ create table if not exists public.folders (
   user_id uuid not null default auth.uid(),
   client_id text
 );
+-- kind：'card'（卡片庫資料夾）或 'board'（白板資料夾，#1）；空值視為 'card'
+alter table public.folders add column if not exists kind text;
 
 create table if not exists public.whiteboards (
   id text primary key,
@@ -39,9 +41,11 @@ create table if not exists public.whiteboards (
   "parentId" text,
   "createdAt" bigint not null,
   "updatedAt" bigint not null,
+  "folderId" text,
   user_id uuid not null default auth.uid(),
   client_id text
 );
+alter table public.whiteboards add column if not exists "folderId" text;
 
 create table if not exists public."cardInstances" (
   id text primary key,

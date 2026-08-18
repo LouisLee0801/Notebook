@@ -15,7 +15,7 @@ describe('whiteboardRepository', () => {
   })
 
   it('creates and renames a whiteboard', async () => {
-    const board = await whiteboardRepository.create('思考板', 1000)
+    const board = await whiteboardRepository.create('思考板', null, 1000)
     await whiteboardRepository.rename(board.id, '新名字', 2000)
     const boards = await whiteboardRepository.list()
     expect(boards).toHaveLength(1)
