@@ -52,12 +52,20 @@ npm run e2e:fixes # 使用者回報項目的迴歸測試（需先啟動 dev serv
 
 ## 雲端同步設定（一次性）
 
-1. 開 [Supabase Dashboard](https://supabase.com/dashboard) → 您的專案 → **SQL Editor** → 貼上 [`supabase/schema.sql`](supabase/schema.sql) 整份執行（建表＋Row Level Security＋Realtime）。
-2. **若之前已建過資料表**，把 [`supabase/migrations/`](supabase/migrations) 裡尚未跑過的遷移依編號執行一次（重跑整份 `schema.sql` 也可，皆安全）：
+> 以下步驟要貼進 SQL Editor 的是**檔案裡的 SQL 內容**（打開檔案全選複製），不是檔案路徑。
+> 貼路徑會得到 `syntax error at or near "supabase"`。
+
+1. 開 [Supabase Dashboard](https://supabase.com/dashboard) → 您的專案 → **SQL Editor** → 打開 [`supabase/schema.sql`](supabase/schema.sql)，把**整份內容**複製貼上後執行（建表＋Row Level Security＋Realtime）。
+2. **若之前已建過資料表**，改為打開 [`supabase/migrations/`](supabase/migrations) 裡尚未跑過的遷移檔，依編號把**內容**各執行一次（重跑整份 `schema.sql` 也可，皆安全）：
    - `001_tag_color.sql` 標籤顏色
    - `002_folders.sql` 卡片資料夾
    - `003_title_html.sql` 標題格式
-   - `004_board_folders.sql` 白板資料夾
+   - `004_board_folders.sql` 白板資料夾 —— 內容就是這兩行：
+     ```sql
+     alter table public.folders add column if not exists kind text;
+     alter table public.whiteboards add column if not exists "folderId" text;
+     ```
+     （`"folderId"` 的雙引號必須保留，否則 Postgres 會把欄位名轉成小寫而對不上）
 3. （可選）**Authentication → Sign In / Up → Email**：關閉 *Confirm email* 可以省去註冊確認信步驟。
 4. 打開 app → 註冊帳號 → 登入。既有的本地筆記會自動上傳；之後任何電腦登入同帳號即可同步。
 
