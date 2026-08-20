@@ -68,10 +68,7 @@ export function BacklinksPanel({ cardId }: { cardId: string }) {
               <li key={card.id}>
                 <button
                   type="button"
-                  onClick={() => {
-                    useCardStore.getState().select(card.id)
-                    useWhiteboardStore.getState().openLibrary()
-                  }}
+                  onClick={() => useWhiteboardStore.getState().openCard(card.id)}
                   className="block w-full rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-left hover:bg-gray-100"
                 >
                   <span className="block truncate text-sm font-medium text-gray-800">
@@ -96,10 +93,7 @@ export function BacklinksPanel({ cardId }: { cardId: string }) {
               <li key={card.id} className="flex items-stretch gap-1">
                 <button
                   type="button"
-                  onClick={() => {
-                    useCardStore.getState().select(card.id)
-                    useWhiteboardStore.getState().openLibrary()
-                  }}
+                  onClick={() => useWhiteboardStore.getState().openCard(card.id)}
                   className="block min-w-0 flex-1 rounded-md border border-dashed border-gray-200 px-3 py-2 text-left hover:bg-gray-50"
                 >
                   <span className="block truncate text-sm font-medium text-gray-800">

@@ -4,11 +4,13 @@ import { cardToMarkdown, downloadMarkdown } from '../editor/markdown'
 import { useCardStore } from '../store/useCardStore'
 import { useWhiteboardStore } from '../store/useWhiteboardStore'
 import { useJournalStore } from '../store/useJournalStore'
+import { useTagStore } from '../store/useTagStore'
+import { matchTags, tagsOfCard } from './cardTags'
 import { todayString } from '../db/journalRepository'
 
 interface PaletteItem {
   key: string
-  kind: '卡片' | '白板' | '指令'
+  kind: '卡片' | '白板' | '指令' | '標籤'
   title: string
   snippet?: string
   run: () => void
@@ -23,15 +25,14 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
   const cards = useCardStore((s) => s.cards)
   const boards = useWhiteboardStore((s) => s.boards)
   const journalCardIds = useJournalStore((s) => s.journalCardIds)
+  const tags = useTagStore((s) => s.tags)
+  const cardTags = useTagStore((s) => s.cardTags)
 
   useEffect(() => inputRef.current?.focus(), [])
 
   const items = useMemo<PaletteItem[]>(() => {
     const q = query.trim().toLowerCase()
-    const openCard = (id: string) => {
-      useCardStore.getState().select(id)
-      useWhiteboardStore.getState().openLibrary()
-    }
+    const openCard = (id: string) => useWhiteboardStore.getState().openCard(id)
 
     const allCommands: PaletteItem[] = [
       {
@@ -78,16 +79,54 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         run: () => useWhiteboardStore.getState().openBoard(b.id),
       }))
 
+    // #1 標籤本身可被搜尋，點了直接開該標籤的頁面
+    const matched = q ? matchTags(tags, q) : []
+    const tagItems: PaletteItem[] = matched.slice(0, 5).map((t) => ({
+      key: `tag-${t.id}`,
+      kind: '標籤',
+      title: `#${t.name}`,
+      snippet: `${cardTags.filter((ct) => ct.tagId === t.id).length} 張卡片`,
+      run: () => useWhiteboardStore.getState().openTag(t.id),
+    }))
+
     // 日誌不是一般卡片：不出現在 Cmd+K 的卡片結果（#7）
     const nonJournal = cards.filter((c) => !journalCardIds.has(c.id))
+
+    // #1 卡片也能用標籤找：標題／內文沒中，但掛著符合的標籤一樣列出來
+    const matchedTagIds = new Set(matched.map((t) => t.id))
+    const byTag = q
+      ? nonJournal.filter((c) =>
+          cardTags.some((ct) => ct.cardId === c.id && matchedTagIds.has(ct.tagId)),
+        )
+      : []
+
+    const textHits = q ? searchCards(nonJournal, q, 12) : []
+    const textHitIds = new Set(textHits.map((r) => r.id))
+    const tagOnlyItems: PaletteItem[] = byTag
+      .filter((c) => !textHitIds.has(c.id))
+      .slice(0, 8)
+      .map((c) => ({
+        key: `card-${c.id}`,
+        kind: '卡片',
+        title: c.title || '未命名卡片',
+        snippet: tagsOfCard(c.id, cardTags, tags)
+          .filter((t) => matchedTagIds.has(t.id))
+          .map((t) => `#${t.name}`)
+          .join(' '),
+        run: () => openCard(c.id),
+      }))
+
     const cardItems: PaletteItem[] = q
-      ? searchCards(nonJournal, q, 12).map((r) => ({
-          key: `card-${r.id}`,
-          kind: '卡片',
-          title: r.title || '未命名卡片',
-          snippet: r.snippet,
-          run: () => openCard(r.id),
-        }))
+      ? [
+          ...textHits.map((r) => ({
+            key: `card-${r.id}`,
+            kind: '卡片' as const,
+            title: r.title || '未命名卡片',
+            snippet: r.snippet,
+            run: () => openCard(r.id),
+          })),
+          ...tagOnlyItems,
+        ]
       : nonJournal.slice(0, 8).map((c) => ({
           key: `card-${c.id}`,
           kind: '卡片',
@@ -95,8 +134,8 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
           run: () => openCard(c.id),
         }))
 
-    return [...cardItems, ...boardItems, ...commands]
-  }, [query, cards, boards, journalCardIds])
+    return [...tagItems, ...cardItems, ...boardItems, ...commands]
+  }, [query, cards, boards, journalCardIds, tags, cardTags])
 
   const runItem = (item: PaletteItem | undefined) => {
     if (!item) return
@@ -132,7 +171,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
             }
             if (e.key === 'Enter') runItem(items[index])
           }}
-          placeholder="搜尋卡片、白板，或執行指令…"
+          placeholder="搜尋卡片、標籤、白板，或執行指令…"
           className="w-full border-b border-gray-100 bg-transparent px-4 py-3 text-sm outline-none"
         />
         <ul className="max-h-80 overflow-y-auto p-1">

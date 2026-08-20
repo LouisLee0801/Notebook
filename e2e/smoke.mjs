@@ -370,8 +370,10 @@ log('M5: unlinked mention detected and converted to a backlink')
 await page.click('aside >> text=我的第一張卡片')
 await page.waitForSelector('button:has-text("＋ 標籤")')
 await page.click('button:has-text("＋ 標籤")')
+await page.waitForSelector('.tag-picker-search')
 await page.keyboard.type('靈感')
-await page.keyboard.press('Enter')
+await page.keyboard.press('Enter') // 面板內 Enter＝建立並掛上這個標籤
+await page.keyboard.press('Escape')
 await page.waitForSelector('aside li:has-text("靈感")')
 log('M4: tag added to card, appears in sidebar')
 
@@ -407,7 +409,7 @@ await page.waitForSelector('th >> text=狀態')
 
 // Cmd+K 全文搜尋跳轉
 await page.keyboard.press('Control+k')
-await page.waitForSelector('input[placeholder="搜尋卡片、白板，或執行指令…"]')
+await page.waitForSelector('input[placeholder="搜尋卡片、標籤、白板，或執行指令…"]')
 await page.keyboard.type('章節一')
 await page.waitForSelector('li >> text=我的第一張卡片')
 await page.keyboard.press('Enter')

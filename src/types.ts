@@ -108,6 +108,7 @@ export interface CardTag {
   cardId: string
   tagId: string
   values: Record<string, unknown>
+  sortOrder?: number // 卡片上的標籤排列順序（可拖曳調整）；舊資料為 undefined
 }
 
 // 日誌：以日期為 key 的特殊卡片（重用 Card 與連結機制）

@@ -19,8 +19,8 @@ const PROPERTY_TYPES: { value: TagProperty['type']; label: string }[] = [
 ]
 
 function openCard(id: string) {
-  useCardStore.getState().select(id)
-  useWhiteboardStore.getState().openLibrary()
+  // 走 openCard 才會留下瀏覽記錄，卡片頁才能「上一頁」回到這個標籤（#5）
+  useWhiteboardStore.getState().openCard(id)
 }
 
 function AddPropertyForm({ tagId }: { tagId: string }) {

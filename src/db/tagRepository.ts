@@ -36,8 +36,22 @@ export const tagRepository = {
     })
   },
 
+  /** 加到卡片末尾（保留既有的屬性值，重複加入不會清空） */
   async addToCard(cardId: string, tagId: string): Promise<void> {
-    await db.cardTags.put({ cardId, tagId, values: {} })
+    const existing = await db.cardTags.get([cardId, tagId])
+    if (existing) return
+    const mine = await db.cardTags.where('cardId').equals(cardId).toArray()
+    const maxOrder = mine.reduce((max, ct) => Math.max(max, ct.sortOrder ?? 0), 0)
+    await db.cardTags.put({ cardId, tagId, values: {}, sortOrder: maxOrder + 1 })
+  },
+
+  /** 依給定順序重寫卡片上標籤的排序（#4 拖曳排序） */
+  async reorderCardTags(cardId: string, tagIds: string[]): Promise<void> {
+    await db.transaction('rw', db.cardTags, async () => {
+      for (const [i, tagId] of tagIds.entries()) {
+        await db.cardTags.update([cardId, tagId], { sortOrder: i + 1 })
+      }
+    })
   },
 
   async removeFromCard(cardId: string, tagId: string): Promise<void> {

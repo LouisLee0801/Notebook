@@ -12,7 +12,7 @@ import { RecoveryView } from './components/RecoveryView'
 import { syncConfigured } from './sync/supabaseClient'
 import { useAuthStore } from './store/useAuthStore'
 import { useCardStore } from './store/useCardStore'
-import { useWhiteboardStore } from './store/useWhiteboardStore'
+import { handlePopState, useWhiteboardStore } from './store/useWhiteboardStore'
 import { useJournalStore } from './store/useJournalStore'
 import { useTagStore } from './store/useTagStore'
 import { useFolderStore } from './store/useFolderStore'
@@ -50,6 +50,13 @@ export default function App() {
     void loadFolders()
     void loadNotes()
   }, [loadCards, loadBoards, loadJournal, loadTags, loadFolders, loadNotes])
+
+  // #5 瀏覽器／手機的「上一頁」回到前一個畫面（例如從標籤點進卡片後退回標籤）
+  useEffect(() => {
+    const onPop = () => handlePopState()
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
 
   // Cmd+K / Ctrl+K 快速開啟（features.md 模組 7，P0）
   useEffect(() => {

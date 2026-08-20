@@ -56,10 +56,7 @@ function CardLinkChip({ node }: NodeViewProps) {
     <NodeViewWrapper
       as="span"
       className="card-link"
-      onClick={() => {
-        useCardStore.getState().select(cardId)
-        useWhiteboardStore.getState().openLibrary()
-      }}
+      onClick={() => useWhiteboardStore.getState().openCard(cardId)}
       onMouseEnter={(e: React.MouseEvent) => {
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
         hoverTimer.current = setTimeout(() => setAnchor(rect), 350)

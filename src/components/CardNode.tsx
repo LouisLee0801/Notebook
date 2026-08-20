@@ -13,8 +13,11 @@ import { generateHTML, type JSONContent } from '@tiptap/core'
 import { baseExtensions } from '../editor/extensions'
 import { titleHtmlOrNull } from '../editor/titleFormat'
 import { useCardStore } from '../store/useCardStore'
+import { useTagStore } from '../store/useTagStore'
 import { useBoardHistoryStore } from '../store/useBoardHistoryStore'
 import { boardItemsRepository } from '../db/whiteboardRepository'
+import { tagsOfCard } from './cardTags'
+import { tagColor } from './tagColors'
 
 export type CardNodeType = Node<
   // expandedHeight：收合前的高度，展開時原樣還原（#3）
@@ -52,6 +55,10 @@ export const CARD_COLORS: { key: string | null; label: string; bg: string; borde
 
 export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps<CardNodeType>) {
   const card = useCardStore((s) => s.cards.find((c) => c.id === data.cardId))
+  // #2 收合時也要看得到卡片的所有標籤
+  const allTags = useTagStore((s) => s.tags)
+  const cardTags = useTagStore((s) => s.cardTags)
+  const myTags = tagsOfCard(data.cardId, cardTags, allTags)
   const { updateNodeData, updateNode, getNode, deleteElements } = useReactFlow()
   const [collapsed, setCollapsed] = useState(() => loadCollapsed(id))
   const pushHistory = useBoardHistoryStore((s) => s.push)
@@ -283,6 +290,23 @@ export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps
             return <div className="card-node-title">{card.title || '未命名卡片'}</div>
           })()}
         </div>
+        {myTags.length > 0 && (
+          /* #2 標籤永遠顯示（含收合狀態），一眼看出這張卡片的分類 */
+          <div className="card-node-tags">
+            {myTags.map((tag) => {
+              const c = tagColor(tag.color)
+              return (
+                <span
+                  key={tag.id}
+                  className="card-node-tag"
+                  style={{ background: c.chipBg, color: c.chipText }}
+                >
+                  #{tag.name}
+                </span>
+              )
+            })}
+          </div>
+        )}
         {!collapsed && html && (
           /* 內容為使用者自己在編輯器輸入、經 schema 正規化的 JSON，非外部來源。
              nowheel：讓滑鼠滾輪捲動內文而非縮放畫布（#5 長文可上下捲）。 */

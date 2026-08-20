@@ -116,6 +116,8 @@ create table if not exists public."cardTags" (
   client_id text,
   primary key (user_id, "cardId", "tagId")
 );
+-- sortOrder：卡片上標籤的排列順序（#4 可拖曳）
+alter table public."cardTags" add column if not exists "sortOrder" double precision;
 
 create table if not exists public."cardLinks" (
   "fromCardId" text not null,

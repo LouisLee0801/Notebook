@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Card, Folder, Whiteboard } from '../types'
 import { useCardStore } from '../store/useCardStore'
-import { useWhiteboardStore } from '../store/useWhiteboardStore'
+import { goBack, useWhiteboardStore } from '../store/useWhiteboardStore'
 import { useJournalStore } from '../store/useJournalStore'
 import { useTagStore } from '../store/useTagStore'
 import { useFolderStore } from '../store/useFolderStore'
@@ -79,10 +79,9 @@ function formatTime(ts: number): string {
 
 function CardItem({ card }: { card: Card }) {
   const selectedId = useCardStore((s) => s.selectedId)
-  const selectCard = useCardStore((s) => s.select)
   const deleteCard = useCardStore((s) => s.deleteCard)
   const view = useWhiteboardStore((s) => s.view)
-  const openLibrary = useWhiteboardStore((s) => s.openLibrary)
+  const openCardInLibrary = useWhiteboardStore((s) => s.openCard)
   const multiSelected = useCardSelectionStore((s) => s.selected.has(card.id))
   const toggle = useCardSelectionStore((s) => s.toggle)
   const replace = useCardSelectionStore((s) => s.replace)
@@ -109,8 +108,7 @@ function CardItem({ card }: { card: Card }) {
             return
           }
           clearSel()
-          selectCard(card.id)
-          openLibrary()
+          openCardInLibrary(card.id)
         }}
         className={`block w-full cursor-grab rounded-md px-3 py-2 text-left hover:bg-gray-200 ${
           multiSelected
@@ -275,7 +273,7 @@ function BoardItem({ board }: { board: Whiteboard }) {
           view.type === 'board' && view.boardId === board.id ? 'bg-gray-200 font-medium' : ''
         }`}
       >
-        🗂 {board.name}
+        <span className="board-icon">▦</span> {board.name}
       </button>
       <button
         type="button"
@@ -443,6 +441,7 @@ export function Sidebar() {
     void loadNotes()
   }, [view, loadNotes])
 
+  const canGoBack = useWhiteboardStore((s) => s.history.length > 0)
   const boardFolders = useFolderStore((s) => s.boardFolders)
   const boardFolderIds = new Set(boardFolders.map((f) => f.id))
   // 沒有資料夾、或資料夾已被刪掉的白板都算未分類
@@ -453,7 +452,18 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-full w-72 shrink-0 flex-col border-r border-gray-200 bg-gray-50">
-      <div className="border-b border-gray-200 px-4 py-3">
+      <div className="flex items-center gap-2 border-b border-gray-200 px-3 py-3">
+        {/* #5 上一頁：回到剛才的標籤／白板／卡片 */}
+        <button
+          type="button"
+          aria-label="上一頁"
+          title={canGoBack ? '上一頁' : '沒有可返回的頁面'}
+          disabled={!canGoBack}
+          onClick={goBack}
+          className="rounded-md px-1.5 py-0.5 text-sm text-gray-500 hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent"
+        >
+          ←
+        </button>
         <h1 className="text-sm font-bold text-gray-800">Notebook</h1>
       </div>
 
