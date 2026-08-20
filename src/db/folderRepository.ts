@@ -17,6 +17,7 @@ export const folderRepository = {
       kind,
       createdAt: now,
       updatedAt: now,
+      collapsed: false,
     }
     await db.folders.add(folder)
     return folder
@@ -24,6 +25,11 @@ export const folderRepository = {
 
   async rename(id: string, name: string, now = Date.now()): Promise<void> {
     await db.folders.update(id, { name: name.trim(), updatedAt: now })
+  },
+
+  /** 側邊欄的展開/收合狀態（存進資料庫才能跨裝置保留） */
+  async setCollapsed(id: string, collapsed: boolean, now = Date.now()): Promise<void> {
+    await db.folders.update(id, { collapsed, updatedAt: now })
   },
 
   /** 刪除資料夾；其中的卡片/白板改為未分類（不刪內容） */

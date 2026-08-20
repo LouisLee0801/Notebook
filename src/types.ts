@@ -24,6 +24,7 @@ export interface Folder {
   kind?: FolderKind
   createdAt: number
   updatedAt: number
+  collapsed?: boolean // 側邊欄是否收合；跟著帳號同步，換電腦也保留
 }
 
 // 白板（docs/data-model.md）
@@ -47,6 +48,7 @@ export interface CardInstance {
   height: number // 0 = 依內容自動
   color: string | null
   sectionId: string | null
+  collapsed?: boolean // 在白板上是否收合成只露標題；跟著帳號同步，換電腦也保留
 }
 
 // 白板上的連線（避免與 React Flow 的 Edge 型別撞名，取名 BoardEdge）

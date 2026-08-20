@@ -179,7 +179,9 @@ function DropZone({
 }
 
 function FolderGroup({ folder, cards }: { folder: Folder; cards: Card[] }) {
-  const [open, setOpen] = useState(true)
+  // 展開/收合存在資料夾本身，換電腦也保留
+  const open = !folder.collapsed
+  const setFolderCollapsed = useFolderStore((s) => s.setFolderCollapsed)
   const renameFolder = useFolderStore((s) => s.renameFolder)
   const deleteFolder = useFolderStore((s) => s.deleteFolder)
   const createCard = useCardStore((s) => s.createCard)
@@ -190,7 +192,8 @@ function FolderGroup({ folder, cards }: { folder: Folder; cards: Card[] }) {
       <div className="group flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-gray-100">
         <button
           type="button"
-          onClick={() => setOpen(!open)}
+          aria-label={`${open ? '收合' : '展開'}資料夾 ${folder.name}`}
+          onClick={() => void setFolderCollapsed(folder.id, open, 'card')}
           className="flex min-w-0 flex-1 items-center gap-1 text-left text-sm text-gray-700"
         >
           <span className="w-3 shrink-0 text-xs text-gray-400">{open ? '▾' : '▸'}</span>
@@ -327,7 +330,8 @@ function BoardDropZone({
 }
 
 function BoardFolderGroup({ folder, boards }: { folder: Folder; boards: Whiteboard[] }) {
-  const [open, setOpen] = useState(true)
+  const open = !folder.collapsed
+  const setFolderCollapsed = useFolderStore((s) => s.setFolderCollapsed)
   const renameFolder = useFolderStore((s) => s.renameFolder)
   const deleteFolder = useFolderStore((s) => s.deleteFolder)
   const createBoard = useWhiteboardStore((s) => s.createBoard)
@@ -337,7 +341,8 @@ function BoardFolderGroup({ folder, boards }: { folder: Folder; boards: Whiteboa
       <div className="group flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-gray-100">
         <button
           type="button"
-          onClick={() => setOpen(!open)}
+          aria-label={`${open ? '收合' : '展開'}白板資料夾 ${folder.name}`}
+          onClick={() => void setFolderCollapsed(folder.id, open, 'board')}
           className="flex min-w-0 flex-1 items-center gap-1 text-left text-sm text-gray-700"
         >
           <span className="w-3 shrink-0 text-xs text-gray-400">{open ? '▾' : '▸'}</span>

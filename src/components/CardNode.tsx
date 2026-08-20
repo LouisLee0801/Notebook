@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   Handle,
   NodeResizeControl,
@@ -20,28 +20,17 @@ import { tagsOfCard } from './cardTags'
 import { tagColor } from './tagColors'
 
 export type CardNodeType = Node<
+  // collapsed：是否只露標題（存進資料庫，換電腦也保留）
   // expandedHeight：收合前的高度，展開時原樣還原（#3）
-  { cardId: string; color: string | null; autoHeight?: boolean; expandedHeight?: number },
+  {
+    cardId: string
+    color: string | null
+    autoHeight?: boolean
+    expandedHeight?: number
+    collapsed?: boolean
+  },
   'card'
 >
-
-// 折疊狀態屬於「白板上的檢視偏好」，用 localStorage 存（不進雲端同步）
-const COLLAPSE_KEY = 'notebook-card-collapsed'
-function loadCollapsed(id: string): boolean {
-  try {
-    return localStorage.getItem(`${COLLAPSE_KEY}:${id}`) === '1'
-  } catch {
-    return false
-  }
-}
-function saveCollapsed(id: string, v: boolean): void {
-  try {
-    if (v) localStorage.setItem(`${COLLAPSE_KEY}:${id}`, '1')
-    else localStorage.removeItem(`${COLLAPSE_KEY}:${id}`)
-  } catch {
-    /* 忽略（無痕模式等） */
-  }
-}
 
 // 卡片顏色（features.md 模組 3 P1）：顏色屬於白板上的實例，不影響卡片本身
 export const CARD_COLORS: { key: string | null; label: string; bg: string; border: string }[] = [
@@ -60,7 +49,8 @@ export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps
   const cardTags = useTagStore((s) => s.cardTags)
   const myTags = tagsOfCard(data.cardId, cardTags, allTags)
   const { updateNodeData, updateNode, getNode, deleteElements } = useReactFlow()
-  const [collapsed, setCollapsed] = useState(() => loadCollapsed(id))
+  // 收合狀態的真實來源是資料庫（透過節點資料傳進來），不再是 localStorage
+  const collapsed = data.collapsed ?? false
   const pushHistory = useBoardHistoryStore((s) => s.push)
 
   /** 縮放與換色也要能「上一步」（#4） */
@@ -120,13 +110,17 @@ export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps
 
   const resizeBefore = useRef({ x: 0, y: 0, width: 280, height: 0 })
 
-  // 開啟白板時就是收合狀態的卡片，也要套用一次（收合狀態記在 localStorage）
-  const appliedOnMount = useRef(false)
+  // 開啟白板時就已是收合狀態的卡片，掛載時要套用一次高度處理。
+  // 只看「掛載當下」的值：之後由 toggleCollapse 負責，
+  // 若這裡也跟著 collapsed 變動重跑，會把剛量測到的收合尺寸蓋回舊值，
+  // 連線就會停在原本展開時的位置。
+  const collapsedOnMount = useRef(collapsed)
   useEffect(() => {
-    if (appliedOnMount.current || !collapsed) return
-    appliedOnMount.current = true
+    if (!collapsedOnMount.current) return
     applyCollapsedHeight(true)
-  }, [collapsed, applyCollapsedHeight])
+    // 僅在掛載時執行一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const html = useMemo(() => {
     if (!card) return ''
@@ -141,8 +135,8 @@ export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps
 
   const toggleCollapse = () => {
     const next = !collapsed
-    setCollapsed(next)
-    saveCollapsed(id, next)
+    updateNodeData(id, { collapsed: next })
+    void boardItemsRepository.setInstanceCollapsed(id, next)
     applyCollapsedHeight(next)
   }
 

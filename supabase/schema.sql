@@ -34,6 +34,8 @@ create table if not exists public.folders (
 );
 -- kind：'card'（卡片庫資料夾）或 'board'（白板資料夾，#1）；空值視為 'card'
 alter table public.folders add column if not exists kind text;
+-- collapsed：側邊欄是否收合（跨裝置保留）
+alter table public.folders add column if not exists collapsed boolean;
 
 create table if not exists public.whiteboards (
   id text primary key,
@@ -60,6 +62,8 @@ create table if not exists public."cardInstances" (
   user_id uuid not null default auth.uid(),
   client_id text
 );
+-- collapsed：卡片在白板上是否收合成只露標題（跨裝置保留）
+alter table public."cardInstances" add column if not exists collapsed boolean;
 
 create table if not exists public."boardEdges" (
   id text primary key,

@@ -33,6 +33,7 @@ npm run build    # 型別檢查 + 產出 dist/
 npm run e2e      # 核心流程冒煙測試（需先啟動 dev server）
 npm run e2e:fixes # 白板／編輯器修正的迴歸測試（需先啟動 dev server）
 npm run e2e:tags  # 標籤相關功能的迴歸測試（需先啟動 dev server）
+npm run e2e:collapse # 收合狀態跨裝置保留的迴歸測試（需先啟動 dev server）
 ```
 
 ### 進度
@@ -50,6 +51,7 @@ npm run e2e:tags  # 標籤相關功能的迴歸測試（需先啟動 dev server�
 - [x] **PWA／手機**：可「加到主畫面」像 App 一樣使用（獨立視窗、離線可開）
 - [x] **白板與編輯器體驗優化 8 項**：白板資料夾（拖曳歸納）、收合卡片仍可調寬度、收合後連線跟著卡片走、白板「上一步／重做」（Ctrl/⌘+Z）、超連結（右鍵插入／浮窗看網址／Ctrl+點擊開啟／自動補 https）、框選模式＋多選對齊與等距分佈、清單 Backspace 退回上一層、表格後可繼續打字
 - [x] **標籤體驗 5 項**：標籤可搜尋（Cmd+K 與卡片標籤面板，也能用標籤找卡片）、白板卡片收合時仍顯示所有標籤、白板圖示改為 ▦ 與資料夾區隔、卡片標籤可一次多選並拖曳排序、從標籤點進卡片後可用返回鍵／瀏覽器上一頁回到標籤
+- [x] **收合狀態跨裝置保留**：白板卡片與側邊欄資料夾的收合狀態改存進資料庫（原本存瀏覽器 localStorage，換電腦就全部展開），跟著帳號同步；升級時會自動沿用本機既有的收合狀態
 - [ ] 其餘 P1（上傳檔案附件、分割視窗…）
 
 ## 雲端同步設定（一次性）
@@ -71,6 +73,11 @@ npm run e2e:tags  # 標籤相關功能的迴歸測試（需先啟動 dev server�
    - `005_card_tag_order.sql` 卡片標籤排序 —— 內容就是這一行：
      ```sql
      alter table public."cardTags" add column if not exists "sortOrder" double precision;
+     ```
+   - `006_collapse_state.sql` 收合狀態跨裝置保留 —— 內容就是這兩行：
+     ```sql
+     alter table public."cardInstances" add column if not exists collapsed boolean;
+     alter table public.folders add column if not exists collapsed boolean;
      ```
 3. （可選）**Authentication → Sign In / Up → Email**：關閉 *Confirm email* 可以省去註冊確認信步驟。
 4. 打開 app → 註冊帳號 → 登入。既有的本地筆記會自動上傳；之後任何電腦登入同帳號即可同步。

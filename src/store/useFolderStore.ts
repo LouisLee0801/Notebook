@@ -14,6 +14,8 @@ interface FolderStore {
   load: () => Promise<void>
   createFolder: (name: string, kind?: FolderKind) => Promise<void>
   renameFolder: (id: string, name: string, kind?: FolderKind) => Promise<void>
+  /** 側邊欄展開／收合（存進資料庫，換電腦也保留） */
+  setFolderCollapsed: (id: string, collapsed: boolean, kind?: FolderKind) => Promise<void>
   deleteFolder: (id: string, kind?: FolderKind) => Promise<void>
 }
 
@@ -41,6 +43,13 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
       list.map((f) => (f.id === id ? { ...f, name } : f)).sort(byName)
     if (kind === 'board') set({ boardFolders: rename(get().boardFolders) })
     else set({ folders: rename(get().folders) })
+  },
+
+  setFolderCollapsed: async (id, collapsed, kind = 'card') => {
+    await folderRepository.setCollapsed(id, collapsed)
+    const apply = (list: Folder[]) => list.map((f) => (f.id === id ? { ...f, collapsed } : f))
+    if (kind === 'board') set({ boardFolders: apply(get().boardFolders) })
+    else set({ folders: apply(get().folders) })
   },
 
   deleteFolder: async (id, kind = 'card') => {

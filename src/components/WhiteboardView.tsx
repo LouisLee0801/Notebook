@@ -19,6 +19,7 @@ import {
 import '@xyflow/react/dist/style.css'
 import type { BoardEdge, BoardNote, CardInstance, Section } from '../types'
 import { boardItemsRepository } from '../db/whiteboardRepository'
+import { adoptLegacyCollapse } from '../db/collapseMigration'
 import { useCardStore } from '../store/useCardStore'
 import { useWhiteboardStore } from '../store/useWhiteboardStore'
 import { useBoardNotesStore } from '../store/useBoardNotesStore'
@@ -44,7 +45,12 @@ function toCardNode(instance: CardInstance): CardNodeType {
     // 卡片層級高於便利貼：便利貼疊在卡片上時仍可點選/移動卡片（#7）
     zIndex: 1,
     // 沒有手動調過高度 → 自動高度，超長內文卡片內捲動（#8）
-    data: { cardId: instance.cardId, color: instance.color, autoHeight: !instance.height },
+    data: {
+      cardId: instance.cardId,
+      color: instance.color,
+      autoHeight: !instance.height,
+      collapsed: instance.collapsed ?? false,
+    },
   }
 }
 
@@ -275,16 +281,20 @@ function Canvas({ boardId }: { boardId: string }) {
 
   useEffect(() => {
     let cancelled = false
-    void boardItemsRepository.listByBoard(boardId).then(({ instances, edges, sections, notes }) => {
-      if (cancelled) return
-      sectionsRef.current = new Map(sections.map((s) => [s.id, s]))
-      setNodes([
-        ...sections.map(toSectionNode),
-        ...notes.map(toStickyNode),
-        ...instances.map(toCardNode),
-      ])
-      setEdges(edges.map(toFlowEdge))
-    })
+    void boardItemsRepository
+      .listByBoard(boardId)
+      // 舊版把收合狀態存在 localStorage，開啟白板時搬進資料庫（只會發生一次）
+      .then(async (board) => ({ ...board, instances: await adoptLegacyCollapse(board.instances) }))
+      .then(({ instances, edges, sections, notes }) => {
+        if (cancelled) return
+        sectionsRef.current = new Map(sections.map((s) => [s.id, s]))
+        setNodes([
+          ...sections.map(toSectionNode),
+          ...notes.map(toStickyNode),
+          ...instances.map(toCardNode),
+        ])
+        setEdges(edges.map(toFlowEdge))
+      })
     return () => {
       cancelled = true
     }
@@ -331,6 +341,7 @@ function Canvas({ boardId }: { boardId: string }) {
         height: node.height ?? 0,
         color: data.color,
         sectionId: null,
+        collapsed: data.collapsed ?? false,
       }
       const lostEdges = edges.filter((e) => e.source === node.id || e.target === node.id)
       void boardItemsRepository.removeInstance(node.id)

@@ -11,7 +11,8 @@
     "e2e": "node e2e/smoke.mjs",
     "preview": "vite preview",
     "e2e:fixes": "node e2e/fixes.mjs",
-    "e2e:tags": "node e2e/tags.mjs"
+    "e2e:tags": "node e2e/tags.mjs",
+    "e2e:collapse": "node e2e/collapse.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.7",

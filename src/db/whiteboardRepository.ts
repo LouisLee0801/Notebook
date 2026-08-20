@@ -78,6 +78,7 @@ export const boardItemsRepository = {
       height: 0,
       color: null,
       sectionId: null,
+      collapsed: false,
     }
     await db.cardInstances.add(instance)
     return instance
@@ -105,6 +106,11 @@ export const boardItemsRepository = {
 
   async setInstanceColor(id: string, color: string | null): Promise<void> {
     await db.cardInstances.update(id, { color })
+  },
+
+  /** 卡片在白板上的收合狀態（存進資料庫才能跨裝置保留） */
+  async setInstanceCollapsed(id: string, collapsed: boolean): Promise<void> {
+    await db.cardInstances.update(id, { collapsed })
   },
 
   // ---- 還原用（#4 上一步）：以原本的 id 寫回，重做時也是同一筆 ----
